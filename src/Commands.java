@@ -1,25 +1,27 @@
+```java
 public class Commands {
 
     private AI ai = new AI();
     private Browser browser = new Browser();
     private AppLauncher appLauncher = new AppLauncher();
 
-    public void execute(String command) {
+    public String execute(String command) {
 
         command = command.toLowerCase().trim();
 
         if (ai.handle(command)) {
-            return;
+            return "Done.";
         }
 
         if (browser.handle(command)) {
-            return;
+            return "Opening it for you.";
         }
 
         if (appLauncher.handle(command)) {
-            return;
+            return "Opening the application.";
         }
 
-        System.out.println("NOURI: I don't understand that command.");
+        return "I don't understand that command.";
     }
 }
+```
