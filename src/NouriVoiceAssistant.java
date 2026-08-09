@@ -1,7 +1,5 @@
 public class NouriVoiceAssistant {
 
-    private static final int RECORD_SECONDS = 5;
-
     public static void main(String[] args) {
 
         Microphone microphone = new Microphone();
@@ -15,11 +13,11 @@ public class NouriVoiceAssistant {
 
             try {
 
-                // 1. Wait for speech
+                // Wait for speech
                 java.io.File audioFile =
-                        microphone.record(RECORD_SECONDS);
+                        microphone.recordUntilSilence();
 
-                // 2. Convert speech to text
+                // Speech → text
                 String text =
                         SpeechToText.transcribe(
                                 audioFile.toPath()
@@ -35,7 +33,7 @@ public class NouriVoiceAssistant {
                         "You: " + text
                 );
 
-                // 3. Check wake phrase
+                // Wake word
                 if (WakeWord.isWakeWord(text)) {
 
                     System.out.println(
@@ -46,9 +44,9 @@ public class NouriVoiceAssistant {
                             "Greetings. How can I help you, sir?"
                     );
 
-                    // 4. Listen for the command
+                    // Listen for command
                     java.io.File commandAudio =
-                            microphone.record(RECORD_SECONDS);
+                            microphone.recordUntilSilence();
 
                     String command =
                             SpeechToText.transcribe(
@@ -71,7 +69,6 @@ public class NouriVoiceAssistant {
                             "You: " + command
                     );
 
-                    // 5. Send command to NOURI
                     handleCommand(command);
                 }
 
