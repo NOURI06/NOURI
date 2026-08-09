@@ -8,20 +8,40 @@ public class Commands {
 
         command = command.toLowerCase().trim();
 
+        // =========================
+        // AI
+        // =========================
+
         String aiResponse = ai.handle(command);
 
         if (aiResponse != null) {
             return aiResponse;
         }
 
-        if (browser.handle(command)) {
-            return "Opening it for you.";
+        // =========================
+        // BROWSER
+        // =========================
+
+        String browserResponse = browser.handle(command);
+
+        if (browserResponse != null) {
+            return browserResponse;
         }
 
-        if (appLauncher.handle(command)) {
-            return "Opening the application.";
+        // =========================
+        // APPLICATIONS
+        // =========================
+
+        String appResponse = appLauncher.handle(command);
+
+        if (appResponse != null) {
+            return appResponse;
         }
 
-        return "I don't understand that command.";
+        // =========================
+        // UNKNOWN
+        // =========================
+
+        return "I'm not sure how to do that yet.";
     }
 }
