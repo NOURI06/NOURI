@@ -9,12 +9,15 @@ public class MicrophoneTest {
             System.out.println("=================================");
             System.out.println("       NOURI MICROPHONE TEST");
             System.out.println("=================================");
-            System.out.println("Speak something...");
-            System.out.println("Listening for 5 seconds...");
+            System.out.println("Speak for 5 seconds...");
 
-            microphone.start();
+            java.io.File audioFile =
+                    microphone.record(5);
 
-            System.out.println("Microphone test complete.");
+            System.out.println(
+                    "Audio saved to: "
+                    + audioFile.getAbsolutePath()
+            );
 
         } catch (Exception e) {
 
