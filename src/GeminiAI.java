@@ -5,7 +5,7 @@ import java.net.http.HttpResponse;
 
 public class GeminiAI {
 
-    private static final String MODEL = "YOUR_WORKING_MODEL";
+    private static final String MODEL = "gemini-3.6-flash";
 
     private static final String API_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/"
