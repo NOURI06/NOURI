@@ -1,4 +1,4 @@
-import java.io.*;
+import java.io.File;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -6,7 +6,10 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import javazoom.jl.player.Player;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 
 public class Voice {
 
@@ -38,6 +41,7 @@ public class Voice {
                     + escapeJson(text)
                     + "\","
                     + "\"model_id\":\"eleven_multilingual_v2\","
+                    + "\"output_format\":\"pcm_44100\","
                     + "\"voice_settings\":{"
                     + "\"stability\":0.55,"
                     + "\"similarity_boost\":0.80,"
@@ -49,17 +53,14 @@ public class Voice {
             HttpRequest request =
                     HttpRequest.newBuilder()
                             .uri(URI.create(API_URL))
-                            .header(
-                                    "xi-api-key",
-                                    apiKey
-                            )
+                            .header("xi-api-key", apiKey)
                             .header(
                                     "Content-Type",
                                     "application/json"
                             )
                             .header(
                                     "Accept",
-                                    "audio/mpeg"
+                                    "audio/pcm"
                             )
                             .POST(
                                     HttpRequest.BodyPublishers
@@ -84,13 +85,17 @@ public class Voice {
                         + response.statusCode()
                 );
 
+                System.out.println(
+                        new String(response.body())
+                );
+
                 return;
             }
 
             Path audioFile =
                     Files.createTempFile(
                             "nouri_voice_",
-                            ".mp3"
+                            ".pcm"
                     );
 
             Files.write(
@@ -98,7 +103,9 @@ public class Voice {
                     response.body()
             );
 
-            playAudio(audioFile.toFile());
+            playPCM(audioFile.toFile());
+
+            Files.deleteIfExists(audioFile);
 
         } catch (Exception e) {
 
@@ -109,6 +116,48 @@ public class Voice {
         }
     }
 
+    private static void playPCM(File file)
+            throws Exception {
+
+        AudioFormat format =
+                new AudioFormat(
+                        44100,
+                        16,
+                        1,
+                        true,
+                        false
+                );
+
+        byte[] audioData =
+                Files.readAllBytes(
+                        file.toPath()
+                );
+
+        AudioInputStream audioStream =
+                new AudioInputStream(
+                        new java.io.ByteArrayInputStream(
+                                audioData
+                        ),
+                        format,
+                        audioData.length / 2
+                );
+
+        Clip clip =
+                AudioSystem.getClip();
+
+        clip.open(audioStream);
+
+        clip.start();
+
+        while (clip.isRunning()) {
+            Thread.sleep(50);
+        }
+
+        clip.stop();
+        clip.close();
+        audioStream.close();
+    }
+
     private static String escapeJson(String text) {
 
         return text
@@ -116,33 +165,5 @@ public class Voice {
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n")
                 .replace("\r", "\\r");
-    }
-
-    private static void playAudio(File file) {
-
-        try {
-
-            FileInputStream stream =
-                    new FileInputStream(file);
-
-            Player player =
-                    new Player(stream);
-
-            player.play();
-
-            stream.close();
-
-            file.delete();
-
-        } catch (Exception e) {
-
-            System.out.println(
-                    "NOURI: Could not play audio."
-            );
-
-            System.out.println(
-                    e.getMessage()
-            );
-        }
     }
 }
