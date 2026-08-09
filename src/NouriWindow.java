@@ -15,7 +15,7 @@ public class NouriWindow {
     public NouriWindow() {
 
         frame = new JFrame("NOURI Assistant");
-        frame.setSize(950, 700);
+        frame.setSize(950, 650);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLocationRelativeTo(null);
 
@@ -42,10 +42,6 @@ public class NouriWindow {
         top.add(title, BorderLayout.WEST);
         top.add(status, BorderLayout.EAST);
 
-        // AI CORE
-        AICorePanel core = new AICorePanel();
-        core.setPreferredSize(new Dimension(950, 230));
-
         // CHAT
         chatPanel = new JPanel();
         chatPanel.setLayout(new BoxLayout(chatPanel, BoxLayout.Y_AXIS));
@@ -54,14 +50,6 @@ public class NouriWindow {
 
         scrollPane = new JScrollPane(chatPanel);
         scrollPane.setBorder(null);
-        scrollPane.getViewport().setBackground(bg);
-
-        // CENTER
-        JPanel center = new JPanel(new BorderLayout());
-        center.setBackground(bg);
-
-        center.add(core, BorderLayout.NORTH);
-        center.add(scrollPane, BorderLayout.CENTER);
 
         // INPUT
         JPanel bottom = new JPanel(new BorderLayout(10, 0));
@@ -82,14 +70,13 @@ public class NouriWindow {
         bottom.add(inputField, BorderLayout.CENTER);
         bottom.add(sendButton, BorderLayout.EAST);
 
-        // ADD COMPONENTS
         root.add(top, BorderLayout.NORTH);
-        root.add(center, BorderLayout.CENTER);
+        root.add(scrollPane, BorderLayout.CENTER);
         root.add(bottom, BorderLayout.SOUTH);
 
         frame.setContentPane(root);
 
-        addMessage("NOURI", "Welcome to NOURI!", false);
+        addMessage("NOURI", "Hello! I'm ready.", false);
 
         sendButton.addActionListener(e -> send());
         inputField.addActionListener(e -> send());
@@ -107,11 +94,24 @@ public class NouriWindow {
 
         addMessage("You", text, true);
 
-        String reply = commands.execute(text);
-
-        addMessage("NOURI", reply, false);
-
         inputField.setText("");
+        sendButton.setEnabled(false);
+
+        // Run Gemini without freezing the GUI
+        new Thread(() -> {
+
+            String reply = commands.execute(text);
+
+            SwingUtilities.invokeLater(() -> {
+
+                addMessage("NOURI", reply, false);
+
+                sendButton.setEnabled(true);
+                inputField.requestFocus();
+
+            });
+
+        }).start();
     }
 
     private void addMessage(
@@ -123,21 +123,21 @@ public class NouriWindow {
         wrapper.setOpaque(false);
 
         JLabel label = new JLabel(
-                "<html><b>" +
-                sender +
-                "</b><br>" +
-                message +
-                "</html>"
+                "<html><b>"
+                + sender
+                + "</b><br>"
+                + message
+                + "</html>"
         );
 
         label.setOpaque(true);
         label.setBorder(new EmptyBorder(10, 15, 10, 15));
 
-        label.setBackground(
-                user
-                ? new Color(0, 120, 255)
-                : new Color(55, 60, 68)
-        );
+        if (user) {
+            label.setBackground(new Color(0, 120, 255));
+        } else {
+            label.setBackground(new Color(55, 60, 68));
+        }
 
         label.setForeground(Color.WHITE);
 
@@ -150,13 +150,15 @@ public class NouriWindow {
         wrapper.setBorder(new EmptyBorder(5, 0, 5, 0));
 
         chatPanel.add(wrapper);
-
         chatPanel.revalidate();
         chatPanel.repaint();
 
         SwingUtilities.invokeLater(() -> {
+
             JScrollBar bar = scrollPane.getVerticalScrollBar();
+
             bar.setValue(bar.getMaximum());
+
         });
     }
 }
