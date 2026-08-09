@@ -1,24 +1,30 @@
 import javax.sound.sampled.*;
+import java.io.File;
 
 public class Microphone {
 
     private TargetDataLine microphone;
 
-    public void start() throws Exception {
+    private final AudioFormat format = new AudioFormat(
+            16000,
+            16,
+            1,
+            true,
+            false
+    );
 
-        AudioFormat format = new AudioFormat(
-                16000,
-                16,
-                1,
-                true,
-                false
-        );
+    public File record(int seconds) throws Exception {
 
         DataLine.Info info =
-                new DataLine.Info(TargetDataLine.class, format);
+                new DataLine.Info(
+                        TargetDataLine.class,
+                        format
+                );
 
         if (!AudioSystem.isLineSupported(info)) {
-            throw new Exception("Microphone format not supported.");
+            throw new Exception(
+                    "Microphone format is not supported."
+            );
         }
 
         microphone =
@@ -27,28 +33,54 @@ public class Microphone {
         microphone.open(format);
         microphone.start();
 
-        System.out.println("NOURI: 🎙️ Listening...");
-
-        byte[] buffer = new byte[4096];
-
-        while (true) {
-
-            int bytesRead =
-                    microphone.read(buffer, 0, buffer.length);
-
-            if (bytesRead > 0) {
-
-                System.out.println(
-                        "NOURI: Received "
-                        + bytesRead
-                        + " bytes of audio."
+        File audioFile =
+                File.createTempFile(
+                        "nouri_speech_",
+                        ".wav"
                 );
 
-                break;
-            }
-        }
+        System.out.println(
+                "NOURI: 🎙️ Listening..."
+        );
+
+        AudioInputStream audioStream =
+                new AudioInputStream(
+                        microphone
+                );
+
+        Thread recorder =
+                new Thread(() -> {
+
+                    try {
+
+                        AudioSystem.write(
+                                audioStream,
+                                AudioFileFormat.Type.WAVE,
+                                audioFile
+                        );
+
+                    } catch (Exception e) {
+
+                        System.out.println(
+                                "NOURI recorder error: "
+                                + e.getMessage()
+                        );
+                    }
+                });
+
+        recorder.start();
+
+        Thread.sleep(seconds * 1000L);
 
         microphone.stop();
         microphone.close();
+
+        audioStream.close();
+
+        System.out.println(
+                "NOURI: 🎙️ Recording complete."
+        );
+
+        return audioFile;
     }
 }
