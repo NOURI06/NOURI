@@ -3,8 +3,13 @@ public class Commands {
     private AI ai = new AI();
     private Browser browser = new Browser();
     private AppLauncher appLauncher = new AppLauncher();
+    private SystemCommands systemCommands = new SystemCommands();
 
     public String execute(String command) {
+
+        if (command == null || command.trim().isEmpty()) {
+            return "I didn't hear a command.";
+        }
 
         command = command.toLowerCase().trim();
 
@@ -39,7 +44,17 @@ public class Commands {
         }
 
         // =========================
-        // UNKNOWN
+        // WINDOWS SYSTEM
+        // =========================
+
+        String systemResponse = systemCommands.handle(command);
+
+        if (systemResponse != null) {
+            return systemResponse;
+        }
+
+        // =========================
+        // UNKNOWN COMMAND
         // =========================
 
         return "I'm not sure how to do that yet.";
