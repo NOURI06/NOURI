@@ -7,6 +7,11 @@ public class Assistant {
     private Memory memory = new Memory();
     private Conversation conversation = new Conversation();
 
+    public static void main(String[] args) {
+        Assistant assistant = new Assistant();
+        assistant.start();
+    }
+
     public void start() {
 
         System.out.println("=================================");
@@ -18,7 +23,11 @@ public class Assistant {
 
         memory.setUserName(name);
 
-        System.out.println("NOURI: Nice to meet you, " + memory.getUserName() + "!");
+        System.out.println(
+            "NOURI: Nice to meet you, "
+            + memory.getUserName()
+            + "!"
+        );
 
         while (true) {
 
