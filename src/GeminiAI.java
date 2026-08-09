@@ -1,4 +1,3 @@
-import java.io.*;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -7,9 +6,11 @@ import java.net.http.HttpResponse;
 public class GeminiAI {
 
     private static final String MODEL = "gemini-2.5-flash";
-    private static final String URL =
+
+    private static final String API_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/"
-            + MODEL + ":generateContent";
+            + MODEL
+            + ":generateContent";
 
     private final HttpClient client = HttpClient.newHttpClient();
 
@@ -18,7 +19,7 @@ public class GeminiAI {
         String apiKey = System.getenv("GEMINI_API_KEY");
 
         if (apiKey == null || apiKey.isEmpty()) {
-            return "My Gemini API key is not configured.";
+            return "Gemini API key is not configured.";
         }
 
         try {
@@ -43,7 +44,7 @@ public class GeminiAI {
                     + "}";
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(URL))
+                    .uri(URI.create(API_URL))
                     .header("Content-Type", "application/json")
                     .header("x-goog-api-key", apiKey)
                     .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -56,6 +57,13 @@ public class GeminiAI {
                     );
 
             if (response.statusCode() != 200) {
+
+                System.out.println("Gemini HTTP status: "
+                        + response.statusCode());
+
+                System.out.println("Gemini response:");
+                System.out.println(response.body());
+
                 return "Gemini returned an error: "
                         + response.statusCode();
             }
@@ -63,6 +71,8 @@ public class GeminiAI {
             return extractText(response.body());
 
         } catch (Exception e) {
+
+            e.printStackTrace();
 
             return "I couldn't connect to Gemini.";
         }
@@ -75,12 +85,13 @@ public class GeminiAI {
         int start = json.indexOf(marker);
 
         if (start == -1) {
-            return "Gemini didn't return a response.";
+            return "Gemini returned no text.";
         }
 
         start += marker.length();
 
         StringBuilder result = new StringBuilder();
+
         boolean escaped = false;
 
         for (int i = start; i < json.length(); i++) {
@@ -89,14 +100,31 @@ public class GeminiAI {
 
             if (escaped) {
 
-                if (c == 'n') {
-                    result.append('\n');
-                } else if (c == 'r') {
-                    result.append('\r');
-                } else if (c == 't') {
-                    result.append('\t');
-                } else {
-                    result.append(c);
+                switch (c) {
+
+                    case 'n':
+                        result.append('\n');
+                        break;
+
+                    case 'r':
+                        result.append('\r');
+                        break;
+
+                    case 't':
+                        result.append('\t');
+                        break;
+
+                    case '"':
+                        result.append('"');
+                        break;
+
+                    case '\\':
+                        result.append('\\');
+                        break;
+
+                    default:
+                        result.append(c);
+                        break;
                 }
 
                 escaped = false;
