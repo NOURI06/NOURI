@@ -4,12 +4,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
-import java.nio.file.Path;
-
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
 
 public class Voice {
 
@@ -23,15 +17,15 @@ public class Voice {
 
         try {
 
+            System.out.println("NOURI: Sending text to ElevenLabs...");
+
             String apiKey =
                     System.getenv("ELEVENLABS_API_KEY");
 
             if (apiKey == null || apiKey.isEmpty()) {
-
                 System.out.println(
-                        "NOURI: ElevenLabs API key not found."
+                        "ERROR: ELEVENLABS_API_KEY is not set."
                 );
-
                 return;
             }
 
@@ -40,28 +34,15 @@ public class Voice {
                     + "\"text\":\""
                     + escapeJson(text)
                     + "\","
-                    + "\"model_id\":\"eleven_multilingual_v2\","
-                    + "\"output_format\":\"pcm_44100\","
-                    + "\"voice_settings\":{"
-                    + "\"stability\":0.55,"
-                    + "\"similarity_boost\":0.80,"
-                    + "\"style\":0.20,"
-                    + "\"use_speaker_boost\":true"
-                    + "}"
+                    + "\"model_id\":\"eleven_multilingual_v2\""
                     + "}";
 
             HttpRequest request =
                     HttpRequest.newBuilder()
                             .uri(URI.create(API_URL))
                             .header("xi-api-key", apiKey)
-                            .header(
-                                    "Content-Type",
-                                    "application/json"
-                            )
-                            .header(
-                                    "Accept",
-                                    "audio/pcm"
-                            )
+                            .header("Content-Type", "application/json")
+                            .header("Accept", "audio/mpeg")
                             .POST(
                                     HttpRequest.BodyPublishers
                                             .ofString(json)
@@ -74,16 +55,20 @@ public class Voice {
             HttpResponse<byte[]> response =
                     client.send(
                             request,
-                            HttpResponse.BodyHandlers
-                                    .ofByteArray()
+                            HttpResponse.BodyHandlers.ofByteArray()
                     );
 
-            if (response.statusCode() != 200) {
+            System.out.println(
+                    "ElevenLabs HTTP status: "
+                    + response.statusCode()
+            );
 
-                System.out.println(
-                        "NOURI Voice HTTP error: "
-                        + response.statusCode()
-                );
+            System.out.println(
+                    "Audio bytes received: "
+                    + response.body().length
+            );
+
+            if (response.statusCode() != 200) {
 
                 System.out.println(
                         new String(response.body())
@@ -92,70 +77,37 @@ public class Voice {
                 return;
             }
 
-            Path audioFile =
-                    Files.createTempFile(
+            File audio =
+                    File.createTempFile(
                             "nouri_voice_",
-                            ".pcm"
+                            ".mp3"
                     );
 
             Files.write(
-                    audioFile,
+                    audio.toPath(),
                     response.body()
             );
 
-            playPCM(audioFile.toFile());
+            System.out.println(
+                    "Audio file created:"
+            );
 
-            Files.deleteIfExists(audioFile);
+            System.out.println(
+                    audio.getAbsolutePath()
+            );
+
+            System.out.println(
+                    "NOURI: Voice generation successful."
+            );
 
         } catch (Exception e) {
 
             System.out.println(
-                    "NOURI Voice error: "
-                    + e.getMessage()
+                    "NOURI Voice error:"
             );
+
+            e.printStackTrace();
         }
-    }
-
-    private static void playPCM(File file)
-            throws Exception {
-
-        AudioFormat format =
-                new AudioFormat(
-                        44100,
-                        16,
-                        1,
-                        true,
-                        false
-                );
-
-        byte[] audioData =
-                Files.readAllBytes(
-                        file.toPath()
-                );
-
-        AudioInputStream audioStream =
-                new AudioInputStream(
-                        new java.io.ByteArrayInputStream(
-                                audioData
-                        ),
-                        format,
-                        audioData.length / 2
-                );
-
-        Clip clip =
-                AudioSystem.getClip();
-
-        clip.open(audioStream);
-
-        clip.start();
-
-        while (clip.isRunning()) {
-            Thread.sleep(50);
-        }
-
-        clip.stop();
-        clip.close();
-        audioStream.close();
     }
 
     private static String escapeJson(String text) {
