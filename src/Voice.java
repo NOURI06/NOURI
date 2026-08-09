@@ -17,15 +17,15 @@ public class Voice {
 
         try {
 
-            System.out.println("NOURI: Sending text to ElevenLabs...");
-
             String apiKey =
                     System.getenv("ELEVENLABS_API_KEY");
 
             if (apiKey == null || apiKey.isEmpty()) {
+
                 System.out.println(
-                        "ERROR: ELEVENLABS_API_KEY is not set."
+                        "NOURI: ElevenLabs API key not found."
                 );
+
                 return;
             }
 
@@ -40,9 +40,18 @@ public class Voice {
             HttpRequest request =
                     HttpRequest.newBuilder()
                             .uri(URI.create(API_URL))
-                            .header("xi-api-key", apiKey)
-                            .header("Content-Type", "application/json")
-                            .header("Accept", "audio/mpeg")
+                            .header(
+                                    "xi-api-key",
+                                    apiKey
+                            )
+                            .header(
+                                    "Content-Type",
+                                    "application/json"
+                            )
+                            .header(
+                                    "Accept",
+                                    "audio/mpeg"
+                            )
                             .POST(
                                     HttpRequest.BodyPublishers
                                             .ofString(json)
@@ -55,59 +64,76 @@ public class Voice {
             HttpResponse<byte[]> response =
                     client.send(
                             request,
-                            HttpResponse.BodyHandlers.ofByteArray()
+                            HttpResponse.BodyHandlers
+                                    .ofByteArray()
                     );
-
-            System.out.println(
-                    "ElevenLabs HTTP status: "
-                    + response.statusCode()
-            );
-
-            System.out.println(
-                    "Audio bytes received: "
-                    + response.body().length
-            );
 
             if (response.statusCode() != 200) {
 
                 System.out.println(
-                        new String(response.body())
+                        "ElevenLabs HTTP error: "
+                        + response.statusCode()
                 );
 
                 return;
             }
 
-            File audio =
+            File audioFile =
                     File.createTempFile(
                             "nouri_voice_",
                             ".mp3"
                     );
 
             Files.write(
-                    audio.toPath(),
+                    audioFile.toPath(),
                     response.body()
             );
 
-            System.out.println(
-                    "Audio file created:"
-            );
-
-            System.out.println(
-                    audio.getAbsolutePath()
-            );
-
-            System.out.println(
-                    "NOURI: Voice generation successful."
-            );
+            playAudio(audioFile);
 
         } catch (Exception e) {
 
             System.out.println(
-                    "NOURI Voice error:"
+                    "NOURI Voice error: "
+                    + e.getMessage()
             );
-
-            e.printStackTrace();
         }
+    }
+
+    private static void playAudio(File file)
+            throws Exception {
+
+        String path =
+                file.getAbsolutePath()
+                        .replace("'", "''");
+
+        String command =
+                "Add-Type -AssemblyName presentationCore; "
+                + "$player = New-Object "
+                + "System.Windows.Media.MediaPlayer; "
+                + "$player.Open([Uri]::new('"
+                + path
+                + "')); "
+                + "$player.Play(); "
+                + "Start-Sleep -Milliseconds 500; "
+                + "while($player.NaturalDuration.HasTimeSpan "
+                + "-eq $false) { "
+                + "Start-Sleep -Milliseconds 100 }; "
+                + "Start-Sleep -Milliseconds "
+                + "([int]$player.NaturalDuration.TimeSpan.TotalMilliseconds); "
+                + "$player.Close();";
+
+        Process process =
+                new ProcessBuilder(
+                        "powershell",
+                        "-NoProfile",
+                        "-Command",
+                        command
+                ).start();
+
+        process.waitFor();
+
+        file.delete();
     }
 
     private static String escapeJson(String text) {
