@@ -5,7 +5,7 @@ import java.net.http.HttpResponse;
 
 public class GeminiAI {
 
-    private static final String MODEL = "gemini-3.6-flash";
+    private static final String MODEL = "YOUR_WORKING_MODEL";
 
     private static final String API_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -56,17 +56,19 @@ public class GeminiAI {
                             HttpResponse.BodyHandlers.ofString()
                     );
 
+            System.out.println("Gemini HTTP status: "
+                    + response.statusCode());
+
             if (response.statusCode() != 200) {
 
-                System.out.println("Gemini HTTP status: "
-                        + response.statusCode());
-
-                System.out.println("Gemini response:");
                 System.out.println(response.body());
 
                 return "Gemini returned an error: "
                         + response.statusCode();
             }
+
+            System.out.println("Gemini raw response:");
+            System.out.println(response.body());
 
             return extractText(response.body());
 
@@ -80,23 +82,35 @@ public class GeminiAI {
 
     private String extractText(String json) {
 
-        String marker = "\"text\":\"";
+        String marker = "\"text\":";
 
-        int start = json.indexOf(marker);
+        int position = json.indexOf(marker);
 
-        if (start == -1) {
+        if (position == -1) {
             return "Gemini returned no text.";
         }
 
-        start += marker.length();
+        position += marker.length();
+
+        while (position < json.length()
+                && Character.isWhitespace(json.charAt(position))) {
+            position++;
+        }
+
+        if (position >= json.length()
+                || json.charAt(position) != '"') {
+            return "Gemini returned an unexpected response.";
+        }
+
+        position++;
 
         StringBuilder result = new StringBuilder();
 
         boolean escaped = false;
 
-        for (int i = start; i < json.length(); i++) {
+        while (position < json.length()) {
 
-            char c = json.charAt(i);
+            char c = json.charAt(position++);
 
             if (escaped) {
 
@@ -128,19 +142,19 @@ public class GeminiAI {
                 }
 
                 escaped = false;
-                continue;
-            }
 
-            if (c == '\\') {
+            } else if (c == '\\') {
+
                 escaped = true;
-                continue;
-            }
 
-            if (c == '"') {
+            } else if (c == '"') {
+
                 break;
-            }
 
-            result.append(c);
+            } else {
+
+                result.append(c);
+            }
         }
 
         return result.toString();
