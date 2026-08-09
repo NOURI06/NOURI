@@ -8,8 +8,10 @@ public class Commands {
 
         command = command.toLowerCase().trim();
 
-        if (ai.handle(command)) {
-            return "Done.";
+        String aiResponse = ai.handle(command);
+
+        if (aiResponse != null) {
+            return aiResponse;
         }
 
         if (browser.handle(command)) {
