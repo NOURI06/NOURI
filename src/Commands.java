@@ -9,28 +9,24 @@ public class Commands {
 
         command = command.trim();
 
-        // Try built-in AI commands
         String response = ai.handle(command);
 
         if (response != null) {
             return response;
         }
 
-        // Try browser commands
         response = browser.handle(command);
 
         if (response != null) {
             return response;
         }
 
-        // Try application commands
         response = appLauncher.handle(command);
 
         if (response != null) {
             return response;
         }
 
-        // Unknown command → Gemini
         return gemini.ask(command);
     }
 }
