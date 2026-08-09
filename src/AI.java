@@ -3,30 +3,42 @@ import java.time.LocalTime;
 
 public class AI {
 
-    public boolean handle(String command) {
+    public String handle(String command) {
 
-        command = command.toLowerCase();
+        command = command.toLowerCase().trim();
 
         if (command.equals("hello")) {
-            System.out.println("NOURI: Hello! Nice to see you.");
-            return true;
+            return "Hello! Nice to see you.";
+        }
+
+        if (command.equals("hi")) {
+            return "Hello! How can I help you?";
+        }
+
+        if (command.equals("hey")) {
+            return "Hey! What can I do for you?";
         }
 
         if (command.equals("time")) {
-            System.out.println("NOURI: The time is " + LocalTime.now().withNano(0));
-            return true;
+            return "The time is " + LocalTime.now().withNano(0);
         }
 
         if (command.equals("date")) {
-            System.out.println("NOURI: Today is " + LocalDate.now());
-            return true;
+            return "Today is " + LocalDate.now();
         }
 
         if (command.equals("who are you")) {
-            System.out.println("NOURI: I am NOURI, your personal desktop assistant.");
-            return true;
+            return "I am NOURI, your personal desktop assistant.";
         }
 
-        return false;
+        if (command.equals("how are you")) {
+            return "I'm doing great! Ready to help.";
+        }
+
+        if (command.equals("what can you do")) {
+            return "I can open applications, control your browser, tell you the time and date, and respond to your commands.";
+        }
+
+        return null;
     }
 }
