@@ -11,20 +11,27 @@ public class SpeechTest {
             System.out.println("=================================");
             System.out.println("        NOURI SPEECH TEST");
             System.out.println("=================================");
-            System.out.println("Speak for 5 seconds...");
 
-            File audioFile = microphone.record(5);
+            File audioFile =
+                    microphone.recordUntilSilence();
 
-            System.out.println("NOURI: Sending audio to ElevenLabs...");
+            System.out.println(
+                    "NOURI: Sending audio to ElevenLabs..."
+            );
 
             String text =
                     SpeechToText.transcribe(
                             audioFile.toPath()
                     );
 
-            if (text != null) {
-                System.out.println("NOURI heard: " + text);
+            if (text != null && !text.isBlank()) {
+
+                System.out.println(
+                        "NOURI heard: " + text
+                );
+
             } else {
+
                 System.out.println(
                         "NOURI: I couldn't understand the audio."
                 );
