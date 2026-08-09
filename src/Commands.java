@@ -9,23 +9,28 @@ public class Commands {
 
         command = command.trim();
 
-        // Built-in NOURI commands
-        if (ai.handle(command)) {
-            return "Done.";
+        // Try built-in AI commands
+        String response = ai.handle(command);
+
+        if (response != null) {
+            return response;
         }
 
-        // Browser commands
-        if (browser.handle(command)) {
-            return "Done.";
+        // Try browser commands
+        response = browser.handle(command);
+
+        if (response != null) {
+            return response;
         }
 
-        // Application commands
-        if (appLauncher.handle(command)) {
-            return "Done.";
+        // Try application commands
+        response = appLauncher.handle(command);
+
+        if (response != null) {
+            return response;
         }
 
-        // If NOURI doesn't recognize the command,
-        // ask Gemini.
+        // Unknown command → Gemini
         return gemini.ask(command);
     }
 }
