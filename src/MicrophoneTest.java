@@ -9,10 +9,9 @@ public class MicrophoneTest {
             System.out.println("=================================");
             System.out.println("       NOURI MICROPHONE TEST");
             System.out.println("=================================");
-            System.out.println("Speak for 5 seconds...");
 
             java.io.File audioFile =
-                    microphone.record(5);
+                    microphone.recordUntilSilence();
 
             System.out.println(
                     "Audio saved to: "
