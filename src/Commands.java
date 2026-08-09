@@ -3,60 +3,29 @@ public class Commands {
     private AI ai = new AI();
     private Browser browser = new Browser();
     private AppLauncher appLauncher = new AppLauncher();
-    private SystemCommands systemCommands = new SystemCommands();
+    private GeminiAI gemini = new GeminiAI();
 
     public String execute(String command) {
 
-        if (command == null || command.trim().isEmpty()) {
-            return "I didn't hear a command.";
+        command = command.trim();
+
+        // Built-in NOURI commands
+        if (ai.handle(command)) {
+            return "Done.";
         }
 
-        command = command.toLowerCase().trim();
-
-        // =========================
-        // AI
-        // =========================
-
-        String aiResponse = ai.handle(command);
-
-        if (aiResponse != null) {
-            return aiResponse;
+        // Browser commands
+        if (browser.handle(command)) {
+            return "Done.";
         }
 
-        // =========================
-        // BROWSER
-        // =========================
-
-        String browserResponse = browser.handle(command);
-
-        if (browserResponse != null) {
-            return browserResponse;
+        // Application commands
+        if (appLauncher.handle(command)) {
+            return "Done.";
         }
 
-        // =========================
-        // APPLICATIONS
-        // =========================
-
-        String appResponse = appLauncher.handle(command);
-
-        if (appResponse != null) {
-            return appResponse;
-        }
-
-        // =========================
-        // WINDOWS SYSTEM
-        // =========================
-
-        String systemResponse = systemCommands.handle(command);
-
-        if (systemResponse != null) {
-            return systemResponse;
-        }
-
-        // =========================
-        // UNKNOWN COMMAND
-        // =========================
-
-        return "I'm not sure how to do that yet.";
+        // If NOURI doesn't recognize the command,
+        // ask Gemini.
+        return gemini.ask(command);
     }
 }
