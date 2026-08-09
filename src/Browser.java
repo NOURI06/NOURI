@@ -1,69 +1,127 @@
-import java.net.URI;
 import java.awt.Desktop;
+import java.net.URI;
 
 public class Browser {
 
-    public boolean handle(String command) {
+    public String handle(String command) {
 
         command = command.toLowerCase().trim();
 
         try {
 
-            // Search Google
+            // =========================
+            // GOOGLE SEARCH
+            // =========================
+
             if (command.startsWith("search ")) {
 
-                String query = command.substring(7).replace(" ", "+");
+                String query = command.substring(7).trim();
 
-                Desktop.getDesktop().browse(
-                        new URI("https://www.google.com/search?q=" + query));
+                if (!query.isEmpty()) {
+                    openUrl(
+                        "https://www.google.com/search?q=" +
+                        query.replace(" ", "+")
+                    );
 
-                System.out.println("NOURI: Searching Google for " +
-                        query.replace("+", " "));
-
-                return true;
+                    return "Searching Google for " + query + ".";
+                }
             }
 
-            // Open websites
-            if (command.equals("open youtube")) {
+            // "google cats"
+            if (command.startsWith("google ")) {
 
-                Desktop.getDesktop().browse(
-                        new URI("https://www.youtube.com"));
+                String query = command.substring(7).trim();
 
-                System.out.println("NOURI: Opening YouTube...");
-                return true;
+                if (!query.isEmpty()) {
+                    openUrl(
+                        "https://www.google.com/search?q=" +
+                        query.replace(" ", "+")
+                    );
+
+                    return "Searching Google for " + query + ".";
+                }
             }
 
-            if (command.equals("open google")) {
+            // =========================
+            // YOUTUBE
+            // =========================
 
-                Desktop.getDesktop().browse(
-                        new URI("https://www.google.com"));
+            if (containsAny(command,
+                    "youtube",
+                    "you tube")) {
 
-                System.out.println("NOURI: Opening Google...");
-                return true;
+                openUrl("https://www.youtube.com");
+
+                return "Opening YouTube.";
             }
 
-            if (command.equals("open github")) {
+            // =========================
+            // GOOGLE
+            // =========================
 
-                Desktop.getDesktop().browse(
-                        new URI("https://github.com"));
+            if (containsAny(command,
+                    "open google",
+                    "go to google",
+                    "launch google")) {
 
-                System.out.println("NOURI: Opening GitHub...");
-                return true;
+                openUrl("https://www.google.com");
+
+                return "Opening Google.";
             }
 
-            if (command.equals("open chatgpt")) {
+            // =========================
+            // GITHUB
+            // =========================
 
-                Desktop.getDesktop().browse(
-                        new URI("https://chatgpt.com"));
+            if (containsAny(command,
+                    "github",
+                    "git hub")) {
 
-                System.out.println("NOURI: Opening ChatGPT...");
-                return true;
+                openUrl("https://github.com");
+
+                return "Opening GitHub.";
+            }
+
+            // =========================
+            // CHATGPT
+            // =========================
+
+            if (containsAny(command,
+                    "chatgpt",
+                    "chat gpt")) {
+
+                openUrl("https://chatgpt.com");
+
+                return "Opening ChatGPT.";
             }
 
         } catch (Exception e) {
 
-            System.out.println("NOURI: I couldn't open the browser.");
-            return true;
+            return "I couldn't open the browser.";
+        }
+
+        return null;
+    }
+
+    private void openUrl(String url) throws Exception {
+
+        if (Desktop.isDesktopSupported()) {
+
+            Desktop.getDesktop().browse(
+                    new URI(url)
+            );
+        }
+    }
+
+    private boolean containsAny(
+            String command,
+            String... words) {
+
+        for (String word : words) {
+
+            if (command.contains(word)) {
+                return true;
+            }
         }
 
         return false;
