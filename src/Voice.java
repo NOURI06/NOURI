@@ -6,6 +6,8 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import javazoom.jl.player.Player;
+
 public class Voice {
 
     private static final String VOICE_ID =
@@ -18,15 +20,23 @@ public class Voice {
 
         try {
 
-            String apiKey = System.getenv("ELEVENLABS_API_KEY");
+            String apiKey =
+                    System.getenv("ELEVENLABS_API_KEY");
 
             if (apiKey == null || apiKey.isEmpty()) {
-                System.out.println("NOURI: ElevenLabs API key not found.");
+
+                System.out.println(
+                        "NOURI: ElevenLabs API key not found."
+                );
+
                 return;
             }
 
-            String json = "{"
-                    + "\"text\":\"" + escapeJson(text) + "\","
+            String json =
+                    "{"
+                    + "\"text\":\""
+                    + escapeJson(text)
+                    + "\","
                     + "\"model_id\":\"eleven_multilingual_v2\","
                     + "\"voice_settings\":{"
                     + "\"stability\":0.55,"
@@ -36,20 +46,35 @@ public class Voice {
                     + "}"
                     + "}";
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(API_URL))
-                    .header("xi-api-key", apiKey)
-                    .header("Content-Type", "application/json")
-                    .header("Accept", "audio/mpeg")
-                    .POST(HttpRequest.BodyPublishers.ofString(json))
-                    .build();
+            HttpRequest request =
+                    HttpRequest.newBuilder()
+                            .uri(URI.create(API_URL))
+                            .header(
+                                    "xi-api-key",
+                                    apiKey
+                            )
+                            .header(
+                                    "Content-Type",
+                                    "application/json"
+                            )
+                            .header(
+                                    "Accept",
+                                    "audio/mpeg"
+                            )
+                            .POST(
+                                    HttpRequest.BodyPublishers
+                                            .ofString(json)
+                            )
+                            .build();
 
-            HttpClient client = HttpClient.newHttpClient();
+            HttpClient client =
+                    HttpClient.newHttpClient();
 
             HttpResponse<byte[]> response =
                     client.send(
                             request,
-                            HttpResponse.BodyHandlers.ofByteArray()
+                            HttpResponse.BodyHandlers
+                                    .ofByteArray()
                     );
 
             if (response.statusCode() != 200) {
@@ -59,24 +84,27 @@ public class Voice {
                         + response.statusCode()
                 );
 
-                System.out.println(
-                        new String(response.body())
-                );
-
                 return;
             }
 
             Path audioFile =
-                    Files.createTempFile("nouri_voice_", ".mp3");
+                    Files.createTempFile(
+                            "nouri_voice_",
+                            ".mp3"
+                    );
 
-            Files.write(audioFile, response.body());
+            Files.write(
+                    audioFile,
+                    response.body()
+            );
 
             playAudio(audioFile.toFile());
 
         } catch (Exception e) {
 
             System.out.println(
-                    "NOURI Voice error: " + e.getMessage()
+                    "NOURI Voice error: "
+                    + e.getMessage()
             );
         }
     }
@@ -94,21 +122,26 @@ public class Voice {
 
         try {
 
-            ProcessBuilder player =
-                    new ProcessBuilder(
-                            "cmd",
-                            "/c",
-                            "start",
-                            "",
-                            file.getAbsolutePath()
-                    );
+            FileInputStream stream =
+                    new FileInputStream(file);
 
-            player.start();
+            Player player =
+                    new Player(stream);
+
+            player.play();
+
+            stream.close();
+
+            file.delete();
 
         } catch (Exception e) {
 
             System.out.println(
                     "NOURI: Could not play audio."
+            );
+
+            System.out.println(
+                    e.getMessage()
             );
         }
     }
