@@ -1,6 +1,6 @@
 public class WakeWord {
 
-    private static final String WAKE_PHRASE = "wake up nou";
+    private static final String WAKE_PHRASE = "wake up body";
 
     public static boolean isWakeWord(String text) {
 
