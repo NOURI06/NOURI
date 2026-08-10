@@ -47,7 +47,7 @@ public class Microphone {
         final double SPEECH_THRESHOLD = 900.0;
 
         // Silence required AFTER speech has started.
-        final long SILENCE_TIME = 500;
+        final long SILENCE_TIME = 800;
 
         // Maximum time waiting for someone to speak.
         final long WAIT_FOR_SPEECH_TIME = 15000;
