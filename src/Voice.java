@@ -21,11 +21,9 @@ public class Voice {
                     System.getenv("ELEVENLABS_API_KEY");
 
             if (apiKey == null || apiKey.isEmpty()) {
-
                 System.out.println(
                         "NOURI: ElevenLabs API key not found."
                 );
-
                 return;
             }
 
@@ -68,11 +66,15 @@ public class Voice {
                                     .ofByteArray()
                     );
 
+            System.out.println(
+                    "ElevenLabs HTTP status: "
+                    + response.statusCode()
+            );
+
             if (response.statusCode() != 200) {
 
                 System.out.println(
-                        "ElevenLabs HTTP error: "
-                        + response.statusCode()
+                        new String(response.body())
                 );
 
                 return;
@@ -108,20 +110,22 @@ public class Voice {
                         .replace("'", "''");
 
         String command =
-                "Add-Type -AssemblyName presentationCore; "
-                + "$player = New-Object "
+                "Add-Type -AssemblyName PresentationCore; "
+                + "$p=New-Object "
                 + "System.Windows.Media.MediaPlayer; "
-                + "$player.Open([Uri]::new('"
+                + "$p.Open([Uri]'"
                 + path
-                + "')); "
-                + "$player.Play(); "
+                + "'); "
                 + "Start-Sleep -Milliseconds 500; "
-                + "while($player.NaturalDuration.HasTimeSpan "
+                + "$p.Play(); "
+                + "Start-Sleep -Milliseconds 500; "
+                + "while($p.NaturalDuration.HasTimeSpan "
                 + "-eq $false) { "
                 + "Start-Sleep -Milliseconds 100 }; "
                 + "Start-Sleep -Milliseconds "
-                + "([int]$player.NaturalDuration.TimeSpan.TotalMilliseconds); "
-                + "$player.Close();";
+                + "([int]$p.NaturalDuration.TimeSpan.TotalMilliseconds); "
+                + "$p.Stop(); "
+                + "$p.Close();";
 
         Process process =
                 new ProcessBuilder(
