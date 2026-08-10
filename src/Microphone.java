@@ -47,10 +47,10 @@ public class Microphone {
         final double SPEECH_THRESHOLD = 900.0;
 
         // Stop after this much silence
-        final long SILENCE_TIME = 900;
+        final long SILENCE_TIME = 500;
 
         // Maximum recording time
-        final long MAX_TIME = 8000;
+        final long MAX_TIME = 5000;
 
         boolean speechStarted = false;
 
