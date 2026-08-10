@@ -17,7 +17,6 @@ public class NouriWindow {
     private final Microphone microphone = new Microphone();
 
     private volatile boolean voiceRunning = true;
-    private volatile boolean processingVoice = false;
     private volatile boolean conversationMode = false;
 
     public NouriWindow() {
@@ -70,15 +69,11 @@ public class NouriWindow {
         // CENTER
         // =========================
 
-        JPanel center =
-                new JPanel(new BorderLayout());
-
-        center.setBackground(
-                new Color(5, 10, 18));
+        JPanel center = new JPanel(new BorderLayout());
+        center.setBackground(new Color(5, 10, 18));
 
         AICorePanel core = new AICorePanel();
-        core.setPreferredSize(
-                new Dimension(420, 350));
+        core.setPreferredSize(new Dimension(420, 350));
 
         JPanel coreContainer =
                 new JPanel(new GridBagLayout());
@@ -107,12 +102,9 @@ public class NouriWindow {
                 new Color(5, 10, 18));
 
         chatPanel.setBorder(
-                new EmptyBorder(
-                        5, 30, 10, 30));
+                new EmptyBorder(5, 30, 10, 30));
 
-        scrollPane =
-                new JScrollPane(chatPanel);
-
+        scrollPane = new JScrollPane(chatPanel);
         scrollPane.setBorder(null);
 
         scrollPane.getViewport()
@@ -124,12 +116,11 @@ public class NouriWindow {
                 BorderLayout.CENTER);
 
         // =========================
-        // COMMAND BAR
+        // BOTTOM BAR
         // =========================
 
         JPanel bottom =
-                new JPanel(
-                        new BorderLayout(12, 0));
+                new JPanel(new BorderLayout(12, 0));
 
         bottom.setBackground(
                 new Color(7, 15, 25));
@@ -162,8 +153,7 @@ public class NouriWindow {
                         new EmptyBorder(
                                 12, 15, 12, 15)));
 
-        sendButton =
-                new JButton("EXECUTE");
+        sendButton = new JButton("EXECUTE");
 
         sendButton.setBackground(
                 new Color(0, 100, 150));
@@ -190,17 +180,9 @@ public class NouriWindow {
                 sendButton,
                 BorderLayout.EAST);
 
-        root.add(
-                top,
-                BorderLayout.NORTH);
-
-        root.add(
-                center,
-                BorderLayout.CENTER);
-
-        root.add(
-                bottom,
-                BorderLayout.SOUTH);
+        root.add(top, BorderLayout.NORTH);
+        root.add(center, BorderLayout.CENTER);
+        root.add(bottom, BorderLayout.SOUTH);
 
         frame.setContentPane(root);
 
@@ -216,7 +198,7 @@ public class NouriWindow {
                 false);
 
         // =========================
-        // EVENTS
+        // BUTTON EVENTS
         // =========================
 
         sendButton.addActionListener(
@@ -243,7 +225,7 @@ public class NouriWindow {
         inputField.requestFocus();
 
         // =========================
-        // START VOICE
+        // START VOICE SYSTEM
         // =========================
 
         startVoiceSystem();
@@ -292,7 +274,9 @@ public class NouriWindow {
                 sendButton.setEnabled(true);
 
                 setStatus(
-                        "SYSTEM ONLINE",
+                        conversationMode
+                                ? "LISTENING..."
+                                : "STANDBY",
                         new Color(0, 255, 170));
 
                 inputField.requestFocus();
@@ -314,14 +298,9 @@ public class NouriWindow {
 
                         try {
 
-                            if (processingVoice) {
-                                Thread.sleep(50);
-                                continue;
-                            }
-
-                            // =========================
-                            // STANDBY
-                            // =========================
+                            // =================================
+                            // STANDBY / WAKE WORD MODE
+                            // =================================
 
                             if (!conversationMode) {
 
@@ -329,18 +308,14 @@ public class NouriWindow {
                                         "STANDBY — SAY WAKE UP, BUDDY",
                                         new Color(0, 255, 170));
 
-                                FileHolder wakeAudio =
-                                        recordVoice();
-
-                                if (wakeAudio == null) {
-                                    continue;
-                                }
+                                File audioFile =
+                                        microphone.recordUntilSilence();
 
                                 String heard =
                                         SpeechToText.transcribe(
-                                                wakeAudio.file.toPath());
+                                                audioFile.toPath());
 
-                                wakeAudio.file.delete();
+                                audioFile.delete();
 
                                 if (heard == null ||
                                         heard.isBlank()) {
@@ -350,14 +325,18 @@ public class NouriWindow {
                                 System.out.println(
                                         "NOURI HEARD: " + heard);
 
-                                if (!WakeWord.isWakeWord(heard)) {
-                                    continue;
-                                }
-
                                 addMessage(
                                         "YOU",
                                         heard,
                                         true);
+
+                                if (!WakeWord.isWakeWord(heard)) {
+                                    continue;
+                                }
+
+                                // =================================
+                                // WAKE UP
+                                // =================================
 
                                 conversationMode = true;
 
@@ -378,54 +357,55 @@ public class NouriWindow {
                                 continue;
                             }
 
-                            // =========================
+                            // =================================
                             // CONVERSATION MODE
-                            // =========================
+                            // =================================
 
                             setStatus(
                                     "LISTENING...",
                                     new Color(0, 255, 170));
 
-                            FileHolder commandAudio =
-                                    recordVoice();
+                            File commandAudio =
+                                    microphone.recordUntilSilence();
 
-                            if (commandAudio == null) {
-                                continue;
-                            }
-
-                            String commandText =
+                            String command =
                                     SpeechToText.transcribe(
-                                            commandAudio.file.toPath());
+                                            commandAudio.toPath());
 
-                            commandAudio.file.delete();
+                            commandAudio.delete();
 
-                            if (commandText == null ||
-                                    commandText.isBlank()) {
-
+                            if (command == null ||
+                                    command.isBlank()) {
                                 continue;
                             }
 
                             System.out.println(
-                                    "COMMAND: " + commandText);
+                                    "COMMAND: " + command);
 
                             addMessage(
                                     "YOU",
-                                    commandText,
+                                    command,
                                     true);
 
                             String lower =
-                                    commandText
+                                    command
                                             .toLowerCase()
                                             .trim();
 
-                            // =========================
-                            // SLEEP COMMAND
-                            // =========================
+                            // =================================
+                            // SLEEP
+                            // =================================
 
-                            if (lower.contains("go to sleep") ||
-                                    lower.contains("sleep now") ||
-                                    lower.contains("stop listening") ||
-                                    lower.equals("goodbye")) {
+                            if (lower.contains("go to sleep")
+                                    || lower.contains("sleep now")
+                                    || lower.contains("stop listening")
+                                    || lower.equals("goodbye")) {
+
+                                conversationMode = false;
+
+                                setStatus(
+                                        "STANDBY",
+                                        new Color(0, 255, 170));
 
                                 String sleepMessage =
                                         "Of course, sir. Going to sleep.";
@@ -435,37 +415,33 @@ public class NouriWindow {
                                         sleepMessage,
                                         false);
 
-                                setStatus(
-                                        "STANDBY",
-                                        new Color(0, 255, 170));
-
                                 Voice.speak(sleepMessage);
-
-                                conversationMode = false;
 
                                 continue;
                             }
 
-                            // =========================
-                            // THINKING
-                            // =========================
+                            // =================================
+                            // EXECUTE COMMAND
+                            // =================================
 
                             setStatus(
                                     "THINKING...",
                                     new Color(0, 200, 255));
 
                             String response =
-                                    commands.execute(
-                                            commandText);
+                                    commands.execute(command);
+
+                            System.out.println(
+                                    "NOURI: " + response);
 
                             addMessage(
                                     "NOURI",
                                     response,
                                     false);
 
-                            // =========================
-                            // SPEAKING
-                            // =========================
+                            // =================================
+                            // SPEAK
+                            // =================================
 
                             setStatus(
                                     "SPEAKING...",
@@ -473,13 +449,10 @@ public class NouriWindow {
 
                             Voice.speak(response);
 
-                            // IMPORTANT:
-                            // conversationMode remains TRUE.
-                            // NOURI immediately listens again.
+                            // conversationMode stays TRUE.
+                            // NOURI will listen again.
 
                         } catch (Exception e) {
-
-                            processingVoice = false;
 
                             System.out.println(
                                     "NOURI VOICE ERROR: "
@@ -503,29 +476,6 @@ public class NouriWindow {
     }
 
     // =====================================================
-    // RECORD AUDIO
-    // =====================================================
-
-    private FileHolder recordVoice() {
-
-        try {
-
-            File file =
-                    microphone.recordUntilSilence();
-
-            return new FileHolder(file);
-
-        } catch (Exception e) {
-
-            System.out.println(
-                    "Microphone error: "
-                    + e.getMessage());
-
-            return null;
-        }
-    }
-
-    // =====================================================
     // STATUS
     // =====================================================
 
@@ -542,7 +492,7 @@ public class NouriWindow {
     }
 
     // =====================================================
-    // CHAT MESSAGE
+    // CHAT
     // =====================================================
 
     private void addMessage(
@@ -561,10 +511,10 @@ public class NouriWindow {
             JLabel label =
                     new JLabel(
                             "<html><b>"
-                            + sender
-                            + "</b><br>"
-                            + message
-                            + "</html>");
+                                    + sender
+                                    + "</b><br>"
+                                    + message
+                                    + "</html>");
 
             label.setOpaque(true);
 
@@ -626,18 +576,5 @@ public class NouriWindow {
                         "HH:mm:ss")
                         .format(
                                 new java.util.Date()));
-    }
-
-    // =====================================================
-    // FILE HOLDER
-    // =====================================================
-
-    private static class FileHolder {
-
-        java.io.File file;
-
-        FileHolder(java.io.File file) {
-            this.file = file;
-        }
     }
 }
