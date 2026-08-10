@@ -36,21 +36,31 @@ public class Microphone {
         microphone.open(format);
         microphone.start();
 
-        System.out.println("NOURI: 🎙️ Listening...");
+        System.out.println("NOURI: Listening...");
 
         ByteArrayOutputStream audio =
                 new ByteArrayOutputStream();
 
-        byte[] buffer = new byte[4096];
+        byte[] buffer = new byte[2048];
 
-        long startTime = System.currentTimeMillis();
+        // Wait for speech
+        final double SPEECH_THRESHOLD = 900.0;
 
-        // Maximum recording time: 10 seconds
-        long maxTime = 10000;
+        // Stop after this much silence
+        final long SILENCE_TIME = 900;
 
-        // We'll keep recording for now.
-        // The next upgrade will use real voice activity detection.
-        while (System.currentTimeMillis() - startTime < maxTime) {
+        // Maximum recording time
+        final long MAX_TIME = 8000;
+
+        boolean speechStarted = false;
+
+        long speechStartTime = 0;
+        long lastSpeechTime = 0;
+
+        long startTime =
+                System.currentTimeMillis();
+
+        while (true) {
 
             int bytesRead =
                     microphone.read(
@@ -59,15 +69,69 @@ public class Microphone {
                             buffer.length
                     );
 
-            if (bytesRead > 0) {
-                audio.write(buffer, 0, bytesRead);
+            if (bytesRead <= 0) {
+                continue;
+            }
+
+            audio.write(
+                    buffer,
+                    0,
+                    bytesRead
+            );
+
+            double volume =
+                    calculateVolume(
+                            buffer,
+                            bytesRead
+                    );
+
+            long now =
+                    System.currentTimeMillis();
+
+            // =========================
+            // SPEECH DETECTED
+            // =========================
+
+            if (volume > SPEECH_THRESHOLD) {
+
+                if (!speechStarted) {
+
+                    speechStarted = true;
+
+                    speechStartTime = now;
+                }
+
+                lastSpeechTime = now;
+            }
+
+            // =========================
+            // STOP AFTER SILENCE
+            // =========================
+
+            if (speechStarted) {
+
+                if (now - lastSpeechTime
+                        >= SILENCE_TIME) {
+
+                    break;
+                }
+            }
+
+            // =========================
+            // MAXIMUM TIME
+            // =========================
+
+            if (now - startTime >= MAX_TIME) {
+                break;
             }
         }
 
         microphone.stop();
         microphone.close();
 
-        System.out.println("NOURI: 🎙️ Done listening.");
+        System.out.println(
+                "NOURI: Done listening."
+        );
 
         File wavFile =
                 File.createTempFile(
@@ -75,13 +139,17 @@ public class Microphone {
                         ".wav"
                 );
 
-        byte[] audioData = audio.toByteArray();
+        byte[] audioData =
+                audio.toByteArray();
 
         AudioInputStream audioStream =
                 new AudioInputStream(
-                        new java.io.ByteArrayInputStream(audioData),
+                        new java.io.ByteArrayInputStream(
+                                audioData
+                        ),
                         format,
-                        audioData.length / format.getFrameSize()
+                        audioData.length
+                                / format.getFrameSize()
                 );
 
         AudioSystem.write(
@@ -93,5 +161,37 @@ public class Microphone {
         audioStream.close();
 
         return wavFile;
+    }
+
+    private double calculateVolume(
+            byte[] buffer,
+            int bytesRead) {
+
+        long sum = 0;
+
+        int samples = bytesRead / 2;
+
+        for (int i = 0; i < bytesRead - 1; i += 2) {
+
+            int low =
+                    buffer[i] & 0xff;
+
+            int high =
+                    buffer[i + 1];
+
+            int sample =
+                    (high << 8) | low;
+
+            sum +=
+                    (long) sample * sample;
+        }
+
+        if (samples == 0) {
+            return 0;
+        }
+
+        return Math.sqrt(
+                (double) sum / samples
+        );
     }
 }
