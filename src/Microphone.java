@@ -43,22 +43,28 @@ public class Microphone {
 
         byte[] buffer = new byte[2048];
 
-        // Wait for speech
+        // How loud speech must be to count as speech.
         final double SPEECH_THRESHOLD = 900.0;
 
-        // Stop after this much silence
+        // Silence required AFTER speech has started.
         final long SILENCE_TIME = 500;
 
-        // Maximum recording time
-        final long MAX_TIME = 5000;
+        // Maximum time waiting for someone to speak.
+        final long WAIT_FOR_SPEECH_TIME = 15000;
+
+        // Maximum length once speech has started.
+        final long MAX_SPEECH_TIME = 8000;
 
         boolean speechStarted = false;
 
-        long speechStartTime = 0;
-        long lastSpeechTime = 0;
-
-        long startTime =
+        long listeningStart =
                 System.currentTimeMillis();
+
+        long speechStart =
+                0;
+
+        long lastSpeech =
+                0;
 
         while (true) {
 
@@ -88,40 +94,72 @@ public class Microphone {
             long now =
                     System.currentTimeMillis();
 
-            // =========================
-            // SPEECH DETECTED
-            // =========================
+            // =================================
+            // WAITING FOR SPEECH
+            // =================================
 
-            if (volume > SPEECH_THRESHOLD) {
+            if (!speechStarted) {
 
-                if (!speechStarted) {
+                if (volume > SPEECH_THRESHOLD) {
 
                     speechStarted = true;
 
-                    speechStartTime = now;
+                    speechStart = now;
+                    lastSpeech = now;
+
+                    System.out.println(
+                            "NOURI: Speech detected."
+                    );
                 }
 
-                lastSpeechTime = now;
-            }
+                // Don't stop just because it's silent.
+                if (now - listeningStart
+                        >= WAIT_FOR_SPEECH_TIME) {
 
-            // =========================
-            // STOP AFTER SILENCE
-            // =========================
-
-            if (speechStarted) {
-
-                if (now - lastSpeechTime
-                        >= SILENCE_TIME) {
+                    System.out.println(
+                            "NOURI: No speech detected."
+                    );
 
                     break;
                 }
+
+                continue;
             }
 
-            // =========================
-            // MAXIMUM TIME
-            // =========================
+            // =================================
+            // SPEECH IS ACTIVE
+            // =================================
 
-            if (now - startTime >= MAX_TIME) {
+            if (volume > SPEECH_THRESHOLD) {
+
+                lastSpeech = now;
+            }
+
+            // =================================
+            // USER STOPPED SPEAKING
+            // =================================
+
+            if (now - lastSpeech
+                    >= SILENCE_TIME) {
+
+                System.out.println(
+                        "NOURI: Silence detected."
+                );
+
+                break;
+            }
+
+            // =================================
+            // MAX SPEECH LENGTH
+            // =================================
+
+            if (now - speechStart
+                    >= MAX_SPEECH_TIME) {
+
+                System.out.println(
+                        "NOURI: Maximum speech time reached."
+                );
+
                 break;
             }
         }
@@ -132,6 +170,10 @@ public class Microphone {
         System.out.println(
                 "NOURI: Done listening."
         );
+
+        // =================================
+        // CREATE WAV FILE
+        // =================================
 
         File wavFile =
                 File.createTempFile(
@@ -171,7 +213,9 @@ public class Microphone {
 
         int samples = bytesRead / 2;
 
-        for (int i = 0; i < bytesRead - 1; i += 2) {
+        for (int i = 0;
+             i < bytesRead - 1;
+             i += 2) {
 
             int low =
                     buffer[i] & 0xff;
