@@ -4,6 +4,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class Voice {
 
@@ -13,7 +14,29 @@ public class Voice {
     private static final String API_URL =
             "https://api.elevenlabs.io/v1/text-to-speech/" + VOICE_ID;
 
+    private static final HttpClient CLIENT =
+            HttpClient.newHttpClient();
+
     public static void speak(String text) {
+
+        if (text == null || text.isBlank()) {
+            return;
+        }
+
+        // Split long answers into smaller pieces.
+        String[] chunks = splitText(text);
+
+        for (String chunk : chunks) {
+
+            if (chunk.isBlank()) {
+                continue;
+            }
+
+            speakChunk(chunk);
+        }
+    }
+
+    private static void speakChunk(String text) {
 
         try {
 
@@ -21,18 +44,28 @@ public class Voice {
                     System.getenv("ELEVENLABS_API_KEY");
 
             if (apiKey == null || apiKey.isEmpty()) {
+
                 System.out.println(
-                        "NOURI: ElevenLabs API key not found."
-                );
+                        "NOURI: ElevenLabs API key not found.");
+
                 return;
             }
+
+            System.out.println(
+                    "NOURI: Sending voice text...");
 
             String json =
                     "{"
                     + "\"text\":\""
                     + escapeJson(text)
                     + "\","
-                    + "\"model_id\":\"eleven_multilingual_v2\""
+                    + "\"model_id\":\"eleven_multilingual_v2\","
+                    + "\"voice_settings\":{"
+                    + "\"stability\":0.55,"
+                    + "\"similarity_boost\":0.80,"
+                    + "\"style\":0.20,"
+                    + "\"use_speaker_boost\":true"
+                    + "}"
                     + "}";
 
             HttpRequest request =
@@ -40,112 +73,151 @@ public class Voice {
                             .uri(URI.create(API_URL))
                             .header(
                                     "xi-api-key",
-                                    apiKey
-                            )
+                                    apiKey)
                             .header(
                                     "Content-Type",
-                                    "application/json"
-                            )
+                                    "application/json")
                             .header(
                                     "Accept",
-                                    "audio/mpeg"
-                            )
+                                    "audio/mpeg")
                             .POST(
                                     HttpRequest.BodyPublishers
-                                            .ofString(json)
-                            )
+                                            .ofString(json))
                             .build();
 
-            HttpClient client =
-                    HttpClient.newHttpClient();
-
             HttpResponse<byte[]> response =
-                    client.send(
+                    CLIENT.send(
                             request,
                             HttpResponse.BodyHandlers
-                                    .ofByteArray()
-                    );
+                                    .ofByteArray());
 
             System.out.println(
                     "ElevenLabs HTTP status: "
-                    + response.statusCode()
-            );
+                    + response.statusCode());
 
             if (response.statusCode() != 200) {
 
                 System.out.println(
-                        new String(response.body())
-                );
+                        new String(response.body()));
 
                 return;
             }
 
-            File audioFile =
-                    File.createTempFile(
+            Path audioFile =
+                    Files.createTempFile(
                             "nouri_voice_",
-                            ".mp3"
-                    );
+                            ".mp3");
 
             Files.write(
-                    audioFile.toPath(),
-                    response.body()
-            );
+                    audioFile,
+                    response.body());
 
-            playAudio(audioFile);
+            System.out.println(
+                    "NOURI: Audio created.");
+
+            playAudio(audioFile.toFile());
 
         } catch (Exception e) {
 
             System.out.println(
                     "NOURI Voice error: "
-                    + e.getMessage()
-            );
+                    + e.getMessage());
         }
     }
 
-    private static void playAudio(File file)
-            throws Exception {
+    // ==========================================
+    // SPLIT LONG TEXT
+    // ==========================================
 
-        String path =
-                file.getAbsolutePath()
-                        .replace("'", "''");
+    private static String[] splitText(String text) {
 
-        String command =
-                "Add-Type -AssemblyName PresentationCore; "
-                + "$p=New-Object "
-                + "System.Windows.Media.MediaPlayer; "
-                + "$p.Open([Uri]'"
-                + path
-                + "'); "
-                + "Start-Sleep -Milliseconds 500; "
-                + "$p.Play(); "
-                + "Start-Sleep -Milliseconds 500; "
-                + "while($p.NaturalDuration.HasTimeSpan "
-                + "-eq $false) { "
-                + "Start-Sleep -Milliseconds 100 }; "
-                + "Start-Sleep -Milliseconds "
-                + "([int]$p.NaturalDuration.TimeSpan.TotalMilliseconds); "
-                + "$p.Stop(); "
-                + "$p.Close();";
+        // Short answers don't need splitting.
+        if (text.length() <= 500) {
+            return new String[]{text};
+        }
 
-        Process process =
-                new ProcessBuilder(
-                        "powershell",
-                        "-NoProfile",
-                        "-Command",
-                        command
-                ).start();
+        java.util.ArrayList<String> chunks =
+                new java.util.ArrayList<>();
 
-        process.waitFor();
+        StringBuilder current =
+                new StringBuilder();
 
-        file.delete();
+        String[] sentences =
+                text.split("(?<=[.!?])\\s+");
+
+        for (String sentence : sentences) {
+
+            if (current.length()
+                    + sentence.length()
+                    + 1 <= 500) {
+
+                if (current.length() > 0) {
+                    current.append(" ");
+                }
+
+                current.append(sentence);
+
+            } else {
+
+                if (current.length() > 0) {
+                    chunks.add(current.toString());
+                }
+
+                current =
+                        new StringBuilder(sentence);
+            }
+        }
+
+        if (current.length() > 0) {
+            chunks.add(current.toString());
+        }
+
+        return chunks.toArray(
+                new String[0]);
     }
 
-    private static String escapeJson(String text) {
+    // ==========================================
+    // JSON ESCAPE
+    // ==========================================
+
+    private static String escapeJson(
+            String text) {
 
         return text
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n")
                 .replace("\r", "\\r");
+    }
+
+    // ==========================================
+    // PLAY AUDIO
+    // ==========================================
+
+    private static void playAudio(File file) {
+
+        try {
+
+            Process player =
+                    new ProcessBuilder(
+                            "cmd",
+                            "/c",
+                            "start",
+                            "",
+                            file.getAbsolutePath())
+                            .inheritIO()
+                            .start();
+
+            /*
+             * Wait for the Windows player process
+             * to launch before continuing.
+             */
+            Thread.sleep(300);
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "NOURI: Could not play audio.");
+        }
     }
 }
