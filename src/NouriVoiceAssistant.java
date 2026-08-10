@@ -3,21 +3,23 @@ public class NouriVoiceAssistant {
     public static void main(String[] args) {
 
         Microphone microphone = new Microphone();
+        Commands commands = new Commands();
 
         System.out.println("=================================");
         System.out.println("          NOURI ONLINE");
         System.out.println("=================================");
-        System.out.println("Say: Wake up, NOURI");
+        System.out.println("Say: Wake up, Buddy");
+
+        boolean conversationMode = false;
 
         while (true) {
 
             try {
 
-                // Wait for speech
+                // Listen for speech
                 java.io.File audioFile =
                         microphone.recordUntilSilence();
 
-                // Speech → text
                 String text =
                         SpeechToText.transcribe(
                                 audioFile.toPath()
@@ -29,48 +31,66 @@ public class NouriVoiceAssistant {
                     continue;
                 }
 
-                System.out.println(
-                        "You: " + text
-                );
+                System.out.println("You: " + text);
 
-                // Wake word
-                if (WakeWord.isWakeWord(text)) {
+                // =========================
+                // WAKE WORD MODE
+                // =========================
 
-                    System.out.println(
-                            "NOURI: Wake word detected."
-                    );
+                if (!conversationMode) {
 
-                    Voice.speak(
-                            "Greetings. How can I help you, sir?"
-                    );
+                    if (WakeWord.isWakeWord(text)) {
 
-                    // Listen for command
-                    java.io.File commandAudio =
-                            microphone.recordUntilSilence();
-
-                    String command =
-                            SpeechToText.transcribe(
-                                    commandAudio.toPath()
-                            );
-
-                    commandAudio.delete();
-
-                    if (command == null ||
-                            command.isBlank()) {
-
-                        Voice.speak(
-                                "I didn't catch that, sir."
+                        System.out.println(
+                                "NOURI: Wake word detected."
                         );
 
-                        continue;
+                        conversationMode = true;
+
+                        Voice.speak(
+                                "Greetings. How can I help you, sir?"
+                        );
                     }
 
-                    System.out.println(
-                            "You: " + command
+                    continue;
+                }
+
+                // =========================
+                // CONVERSATION MODE
+                // =========================
+
+                String lower =
+                        text.toLowerCase().trim();
+
+                // Exit conversation mode
+                if (lower.contains("go to sleep")
+                        || lower.contains("sleep now")
+                        || lower.contains("stop listening")
+                        || lower.equals("goodbye")) {
+
+                    Voice.speak(
+                            "Of course, sir. Going to sleep."
                     );
 
-                    handleCommand(command);
+                    conversationMode = false;
+
+                    System.out.println(
+                            "NOURI: Conversation mode OFF."
+                    );
+
+                    continue;
                 }
+
+                // Execute command
+                String response =
+                        commands.execute(text);
+
+                System.out.println(
+                        "NOURI: " + response
+                );
+
+                // Speak response
+                Voice.speak(response);
 
             } catch (Exception e) {
 
@@ -80,19 +100,5 @@ public class NouriVoiceAssistant {
                 );
             }
         }
-    }
-
-    private static void handleCommand(String command) {
-
-        Commands commands = new Commands();
-
-        String response =
-                commands.execute(command);
-
-        System.out.println(
-                "NOURI: " + response
-        );
-
-        Voice.speak(response);
     }
 }
