@@ -1,6 +1,6 @@
 public class WakeWord {
 
-    private static final String WAKE_PHRASE = "wake up buddy";
+    private static final String WAKE_WORD = "buddy";
 
     public static boolean isWakeWord(String text) {
 
@@ -8,17 +8,17 @@ public class WakeWord {
             return false;
         }
 
-        text = text
-                .toLowerCase()
-                .trim();
+        String normalized =
+                text.toLowerCase()
+                        .trim()
+                        .replace(",", "")
+                        .replace(".", "")
+                        .replace("!", "")
+                        .replace("?", "");
 
-        // Remove common punctuation
-        text = text
-                .replace(",", "")
-                .replace(".", "")
-                .replace("!", "")
-                .replace("?", "");
-
-        return text.contains(WAKE_PHRASE);
+        return normalized.equals(WAKE_WORD)
+                || normalized.startsWith(WAKE_WORD + " ")
+                || normalized.endsWith(" " + WAKE_WORD)
+                || normalized.contains(" " + WAKE_WORD + " ");
     }
 }
