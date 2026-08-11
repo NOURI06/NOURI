@@ -1,7 +1,4 @@
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
+import javax.sound.sampled.*;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -123,29 +120,71 @@ public class Voice {
                         true,
                         false);
 
-        AudioInputStream stream =
-                new AudioInputStream(
-                        new ByteArrayInputStream(
-                                audioData),
-                        format,
-                        audioData.length / 2);
+        DataLine.Info info =
+                new DataLine.Info(
+                        SourceDataLine.class,
+                        format);
 
-        Clip clip = AudioSystem.getClip();
+        Mixer speakerMixer = null;
 
-        clip.open(stream);
+        for (Mixer.Info mixerInfo :
+                AudioSystem.getMixerInfo()) {
+
+            String name =
+                    mixerInfo.getName();
+
+            if (name.contains(
+                    "Haut-parleurs / écouteurs")
+                    || name.contains(
+                    "Realtek Audio")) {
+
+                Mixer mixer =
+                        AudioSystem.getMixer(
+                                mixerInfo);
+
+                if (mixer.isLineSupported(info)) {
+                    speakerMixer = mixer;
+                    break;
+                }
+            }
+        }
+
+        SourceDataLine line;
+
+        if (speakerMixer != null) {
+
+            System.out.println(
+                    "NOURI: Using Realtek speakers.");
+
+            line =
+                    (SourceDataLine)
+                            speakerMixer.getLine(info);
+
+        } else {
+
+            System.out.println(
+                    "NOURI: Realtek mixer not found. "
+                    + "Using default audio output.");
+
+            line =
+                    (SourceDataLine)
+                            AudioSystem.getLine(info);
+        }
+
+        line.open(format);
+        line.start();
 
         System.out.println(
                 "NOURI: Speaking...");
 
-        clip.start();
+        line.write(
+                audioData,
+                0,
+                audioData.length);
 
-        while (clip.isRunning()) {
-            Thread.sleep(20);
-        }
-
-        clip.stop();
-        clip.close();
-        stream.close();
+        line.drain();
+        line.stop();
+        line.close();
 
         System.out.println(
                 "NOURI: Finished speaking.");
