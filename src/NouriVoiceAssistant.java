@@ -1,5 +1,7 @@
 public class NouriVoiceAssistant {
 
+    private static final int MAX_VOICE_CHARACTERS = 350;
+
     public static void main(String[] args) {
 
         Microphone microphone = new Microphone();
@@ -74,15 +76,21 @@ public class NouriVoiceAssistant {
                 String response =
                         commands.execute(text);
 
+                if (response == null
+                        || response.isBlank()) {
+                    continue;
+                }
+
+                System.out.println("NOURI: " + response);
+
+                String voiceResponse =
+                        prepareVoiceResponse(response);
+
                 System.out.println(
-                        "NOURI: " + response
+                        "NOURI VOICE: " + voiceResponse
                 );
 
-                if (response != null
-                        && !response.isBlank()) {
-
-                    Voice.speak(response);
-                }
+                Voice.speak(voiceResponse);
 
             } catch (Exception e) {
 
@@ -92,5 +100,46 @@ public class NouriVoiceAssistant {
                 );
             }
         }
+    }
+
+    private static String prepareVoiceResponse(String response) {
+
+        response = response
+                .replace("\n", " ")
+                .replace("\r", " ")
+                .replace("*", "")
+                .replace("#", "")
+                .replace("  ", " ")
+                .trim();
+
+        if (response.length() <= MAX_VOICE_CHARACTERS) {
+            return response;
+        }
+
+        int limit = MAX_VOICE_CHARACTERS;
+
+        int end = response.lastIndexOf(
+                ". ",
+                limit
+        );
+
+        if (end < 100) {
+            end = response.lastIndexOf(
+                    ", ",
+                    limit
+            );
+        }
+
+        if (end < 100) {
+            end = limit;
+        } else {
+            end += 1;
+        }
+
+        String shortResponse =
+                response.substring(0, end).trim();
+
+        return shortResponse
+                + " I have more details if you want them.";
     }
 }
