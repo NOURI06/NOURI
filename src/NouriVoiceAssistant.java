@@ -1,4 +1,3 @@
-```java
 public class NouriVoiceAssistant {
 
     private static final int MAX_VOICE_CHARACTERS = 350;
@@ -157,4 +156,3 @@ public class NouriVoiceAssistant {
                 + ". I have more details if you need them.";
     }
 }
-```
