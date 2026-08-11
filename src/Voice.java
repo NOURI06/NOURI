@@ -1,9 +1,10 @@
+import javazoom.jl.decoder.Bitstream;
+import javazoom.jl.decoder.Decoder;
+import javazoom.jl.decoder.Header;
+import javazoom.jl.decoder.SampleBuffer;
+
 import javax.sound.sampled.*;
 import java.io.ByteArrayInputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 
 public class Voice {
 
@@ -14,8 +15,8 @@ public class Voice {
             "https://api.elevenlabs.io/v1/text-to-speech/"
             + VOICE_ID;
 
-    private static final HttpClient CLIENT =
-            HttpClient.newHttpClient();
+    private static final java.net.http.HttpClient CLIENT =
+            java.net.http.HttpClient.newHttpClient();
 
     public static void speak(String text) {
 
@@ -29,10 +30,8 @@ public class Voice {
                     System.getenv("ELEVENLABS_API_KEY");
 
             if (apiKey == null || apiKey.isEmpty()) {
-
                 System.out.println(
                         "NOURI: ElevenLabs API key not found.");
-
                 return;
             }
 
@@ -54,12 +53,10 @@ public class Voice {
                     + "}"
                     + "}";
 
-            HttpRequest request =
-                    HttpRequest.newBuilder()
-                            .uri(URI.create(API_URL))
-                            .header(
-                                    "xi-api-key",
-                                    apiKey)
+            java.net.http.HttpRequest request =
+                    java.net.http.HttpRequest.newBuilder()
+                            .uri(java.net.URI.create(API_URL))
+                            .header("xi-api-key", apiKey)
                             .header(
                                     "Content-Type",
                                     "application/json")
@@ -67,14 +64,16 @@ public class Voice {
                                     "Accept",
                                     "audio/mpeg")
                             .POST(
-                                    HttpRequest.BodyPublishers
+                                    java.net.http.HttpRequest
+                                            .BodyPublishers
                                             .ofString(json))
                             .build();
 
-            HttpResponse<byte[]> response =
+            java.net.http.HttpResponse<byte[]> response =
                     CLIENT.send(
                             request,
-                            HttpResponse.BodyHandlers
+                            java.net.http.HttpResponse
+                                    .BodyHandlers
                                     .ofByteArray());
 
             System.out.println(
@@ -106,72 +105,100 @@ public class Voice {
         }
     }
 
-    private static void playMP3(byte[] audioData)
+    private static void playMP3(byte[] mp3Data)
             throws Exception {
 
         System.out.println(
-                "NOURI: Decoding MP3...");
+                "NOURI: JLayer decoding MP3...");
 
         ByteArrayInputStream input =
-                new ByteArrayInputStream(audioData);
+                new ByteArrayInputStream(mp3Data);
 
-        AudioInputStream originalStream =
-                AudioSystem.getAudioInputStream(input);
+        Bitstream bitstream =
+                new Bitstream(input);
 
-        AudioFormat baseFormat =
-                originalStream.getFormat();
+        Decoder decoder =
+                new Decoder();
 
-        AudioFormat decodedFormat =
-                new AudioFormat(
-                        AudioFormat.Encoding.PCM_SIGNED,
-                        baseFormat.getSampleRate(),
-                        16,
-                        baseFormat.getChannels(),
-                        baseFormat.getChannels() * 2,
-                        baseFormat.getSampleRate(),
-                        false);
+        SourceDataLine line = null;
 
-        AudioInputStream decodedStream =
-                AudioSystem.getAudioInputStream(
-                        decodedFormat,
-                        originalStream);
+        try {
 
-        DataLine.Info info =
-                new DataLine.Info(
-                        SourceDataLine.class,
-                        decodedFormat);
+            Header header;
 
-        SourceDataLine line =
-                (SourceDataLine)
-                        AudioSystem.getLine(info);
+            while ((header = bitstream.readFrame()) != null) {
 
-        line.open(decodedFormat);
-        line.start();
+                SampleBuffer output =
+                        (SampleBuffer)
+                                decoder.decodeFrame(
+                                        header,
+                                        bitstream);
 
-        System.out.println(
-                "NOURI: Speaking...");
+                if (line == null) {
 
-        byte[] buffer =
-                new byte[4096];
+                    AudioFormat format =
+                            new AudioFormat(
+                                    output.getSampleFrequency(),
+                                    16,
+                                    output.getChannelCount(),
+                                    true,
+                                    false);
 
-        int bytesRead;
+                    DataLine.Info info =
+                            new DataLine.Info(
+                                    SourceDataLine.class,
+                                    format);
 
-        while ((bytesRead =
-                decodedStream.read(buffer))
-                != -1) {
+                    line =
+                            (SourceDataLine)
+                                    AudioSystem.getLine(info);
 
-            line.write(
-                    buffer,
-                    0,
-                    bytesRead);
+                    line.open(format);
+                    line.start();
+
+                    System.out.println(
+                            "NOURI: Speaking...");
+                }
+
+                short[] samples =
+                        output.getBuffer();
+
+                byte[] pcm =
+                        new byte[
+                                output.getBufferLength() * 2];
+
+                for (int i = 0;
+                     i < output.getBufferLength();
+                     i++) {
+
+                    pcm[i * 2] =
+                            (byte)
+                            (samples[i] & 0xff);
+
+                    pcm[i * 2 + 1] =
+                            (byte)
+                            ((samples[i] >> 8) & 0xff);
+                }
+
+                line.write(
+                        pcm,
+                        0,
+                        pcm.length);
+
+                bitstream.closeFrame();
+            }
+
+        } finally {
+
+            if (line != null) {
+
+                line.drain();
+                line.stop();
+                line.close();
+            }
+
+            bitstream.close();
         }
-
-        line.drain();
-        line.stop();
-        line.close();
-
-        decodedStream.close();
-        originalStream.close();
 
         System.out.println(
                 "NOURI: Finished speaking.");
