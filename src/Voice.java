@@ -1,5 +1,4 @@
 import javax.sound.sampled.*;
-import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -99,6 +98,11 @@ public class Voice {
                 return;
             }
 
+            System.out.println(
+                    "NOURI: Audio received: "
+                    + response.body().length
+                    + " bytes.");
+
             playPCM(response.body());
 
         } catch (Exception e) {
@@ -106,6 +110,8 @@ public class Voice {
             System.out.println(
                     "NOURI Voice error: "
                     + e.getMessage());
+
+            e.printStackTrace();
         }
     }
 
@@ -114,10 +120,12 @@ public class Voice {
 
         AudioFormat format =
                 new AudioFormat(
+                        AudioFormat.Encoding.PCM_SIGNED,
                         44100,
                         16,
                         1,
-                        true,
+                        2,
+                        44100,
                         false);
 
         DataLine.Info info =
@@ -125,51 +133,19 @@ public class Voice {
                         SourceDataLine.class,
                         format);
 
-        Mixer speakerMixer = null;
+        System.out.println(
+                "NOURI: Opening default Windows audio output...");
 
-        for (Mixer.Info mixerInfo :
-                AudioSystem.getMixerInfo()) {
+        if (!AudioSystem.isLineSupported(info)) {
 
-            String name =
-                    mixerInfo.getName();
-
-            if (name.contains(
-                    "Haut-parleurs / écouteurs")
-                    || name.contains(
-                    "Realtek Audio")) {
-
-                Mixer mixer =
-                        AudioSystem.getMixer(
-                                mixerInfo);
-
-                if (mixer.isLineSupported(info)) {
-                    speakerMixer = mixer;
-                    break;
-                }
-            }
+            throw new LineUnavailableException(
+                    "Default audio system does not support "
+                    + "44100 Hz, 16-bit, mono PCM.");
         }
 
-        SourceDataLine line;
-
-        if (speakerMixer != null) {
-
-            System.out.println(
-                    "NOURI: Using Realtek speakers.");
-
-            line =
-                    (SourceDataLine)
-                            speakerMixer.getLine(info);
-
-        } else {
-
-            System.out.println(
-                    "NOURI: Realtek mixer not found. "
-                    + "Using default audio output.");
-
-            line =
-                    (SourceDataLine)
-                            AudioSystem.getLine(info);
-        }
+        SourceDataLine line =
+                (SourceDataLine)
+                        AudioSystem.getLine(info);
 
         line.open(format);
         line.start();
@@ -177,10 +153,23 @@ public class Voice {
         System.out.println(
                 "NOURI: Speaking...");
 
-        line.write(
-                audioData,
-                0,
-                audioData.length);
+        int offset = 0;
+
+        while (offset < audioData.length) {
+
+            int length =
+                    Math.min(
+                            4096,
+                            audioData.length - offset);
+
+            int written =
+                    line.write(
+                            audioData,
+                            offset,
+                            length);
+
+            offset += written;
+        }
 
         line.drain();
         line.stop();
