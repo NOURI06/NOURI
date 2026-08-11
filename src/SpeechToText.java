@@ -1,11 +1,4 @@
-import java.io.File;
 import java.nio.file.Path;
-
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-
-import java.io.InputStream;
 
 public class SpeechToText {
 
@@ -13,37 +6,59 @@ public class SpeechToText {
 
         try {
 
-            System.out.println("NOURI: Using Windows English-UK speech recognition...");
-
-            ProcessBuilder processBuilder = new ProcessBuilder(
-                    "powershell.exe",
-                    "-NoProfile",
-                    "-Command",
-                    "$ErrorActionPreference='Stop'; " +
-                    "Add-Type -AssemblyName System.Speech; " +
-                    "$recognizer = New-Object System.Speech.Recognition.SpeechRecognitionEngine('en-GB'); " +
-                    "$recognizer.SetInputToWaveFile('" +
-                    audioFile.toAbsolutePath().toString().replace("'", "''") +
-                    "'); " +
-                    "$result = $recognizer.Recognize(); " +
-                    "if ($result -ne $null) { [Console]::WriteLine($result.Text) }"
+            System.out.println(
+                    "NOURI: Using Windows English-UK speech recognition..."
             );
 
-            Process process = processBuilder.start();
+            String audioPath =
+                    audioFile.toAbsolutePath()
+                            .toString()
+                            .replace("'", "''");
 
-            InputStream inputStream = process.getInputStream();
+            String command =
+                    "Add-Type -AssemblyName System.Speech; " +
+                    "$r = New-Object System.Speech.Recognition.SpeechRecognitionEngine('en-GB'); " +
+                    "$r.LoadGrammar(New-Object System.Speech.Recognition.DictationGrammar); " +
+                    "$r.SetInputToWaveFile('" + audioPath + "'); " +
+                    "$result = $r.Recognize(); " +
+                    "if ($result) { Write-Output $result.Text }";
+
+            ProcessBuilder pb =
+                    new ProcessBuilder(
+                            "powershell.exe",
+                            "-NoProfile",
+                            "-ExecutionPolicy",
+                            "Bypass",
+                            "-Command",
+                            command
+                    );
+
+            pb.redirectErrorStream(true);
+
+            Process process = pb.start();
 
             String output =
                     new String(
-                            inputStream.readAllBytes()
+                            process.getInputStream().readAllBytes()
                     ).trim();
 
-            process.waitFor();
+            int exitCode = process.waitFor();
 
-            if (output.isEmpty()) {
+            if (exitCode != 0) {
 
                 System.out.println(
-                        "NOURI: I did not understand that."
+                        "NOURI: Windows speech recognition failed."
+                );
+
+                System.out.println(output);
+
+                return null;
+            }
+
+            if (output.isBlank()) {
+
+                System.out.println(
+                        "NOURI: I couldn't understand the audio."
                 );
 
                 return null;
@@ -58,8 +73,7 @@ public class SpeechToText {
         } catch (Exception e) {
 
             System.out.println(
-                    "NOURI STT error: " +
-                    e.getMessage()
+                    "NOURI STT error: " + e.getMessage()
             );
 
             return null;
