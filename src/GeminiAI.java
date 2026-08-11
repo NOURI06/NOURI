@@ -24,7 +24,16 @@ public class GeminiAI {
 
         try {
 
-            String escapedQuestion = escapeJson(question);
+            String prompt =
+                    "You are NOURI, a helpful voice assistant. "
+                    + "Answer the user's question accurately and naturally. "
+                    + "Keep your answer concise because it will be spoken aloud. "
+                    + "For normal questions, use no more than 3 short sentences. "
+                    + "If the user asks for a large amount of information, "
+                    + "give a useful summary instead of a huge response. "
+                    + "Do not use Markdown, bullet points, symbols, or equations. "
+                    + "Speak naturally. "
+                    + "User: " + escapeJson(question);
 
             String json =
                     "{"
@@ -32,7 +41,7 @@ public class GeminiAI {
                     + "{"
                     + "\"parts\":["
                     + "{"
-                    + "\"text\":\"" + escapedQuestion + "\""
+                    + "\"text\":\"" + prompt + "\""
                     + "}"
                     + "]"
                     + "}"
@@ -91,7 +100,6 @@ public class GeminiAI {
     private String extractText(String json) {
 
         String marker = "\"text\":";
-
         int position = json.indexOf(marker);
 
         if (position == -1) {
@@ -102,20 +110,17 @@ public class GeminiAI {
 
         while (position < json.length()
                 && Character.isWhitespace(json.charAt(position))) {
-
             position++;
         }
 
         if (position >= json.length()
                 || json.charAt(position) != '"') {
-
             return "Gemini returned an unexpected response.";
         }
 
         position++;
 
         StringBuilder result = new StringBuilder();
-
         boolean escaped = false;
 
         while (position < json.length()) {
@@ -192,3 +197,4 @@ public class GeminiAI {
                 .trim();
     }
 }
+```
