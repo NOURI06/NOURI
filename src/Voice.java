@@ -1,10 +1,11 @@
-import java.io.File;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 public class Voice {
 
@@ -12,7 +13,8 @@ public class Voice {
             "WkQNWeRIRZHzOYi4vP18";
 
     private static final String API_URL =
-            "https://api.elevenlabs.io/v1/text-to-speech/" + VOICE_ID;
+            "https://api.elevenlabs.io/v1/text-to-speech/"
+            + VOICE_ID;
 
     private static final HttpClient CLIENT =
             HttpClient.newHttpClient();
@@ -23,16 +25,13 @@ public class Voice {
             return;
         }
 
-        // Split long answers into smaller pieces.
         String[] chunks = splitText(text);
 
         for (String chunk : chunks) {
 
-            if (chunk.isBlank()) {
-                continue;
+            if (!chunk.isBlank()) {
+                speakChunk(chunk);
             }
-
-            speakChunk(chunk);
         }
     }
 
@@ -52,7 +51,7 @@ public class Voice {
             }
 
             System.out.println(
-                    "NOURI: Sending voice text...");
+                    "NOURI: Generating voice...");
 
             String json =
                     "{"
@@ -60,6 +59,7 @@ public class Voice {
                     + escapeJson(text)
                     + "\","
                     + "\"model_id\":\"eleven_multilingual_v2\","
+                    + "\"output_format\":\"pcm_44100\","
                     + "\"voice_settings\":{"
                     + "\"stability\":0.55,"
                     + "\"similarity_boost\":0.80,"
@@ -79,7 +79,7 @@ public class Voice {
                                     "application/json")
                             .header(
                                     "Accept",
-                                    "audio/mpeg")
+                                    "audio/pcm")
                             .POST(
                                     HttpRequest.BodyPublishers
                                             .ofString(json))
@@ -103,19 +103,10 @@ public class Voice {
                 return;
             }
 
-            Path audioFile =
-                    Files.createTempFile(
-                            "nouri_voice_",
-                            ".mp3");
-
-            Files.write(
-                    audioFile,
-                    response.body());
-
             System.out.println(
-                    "NOURI: Audio created.");
+                    "NOURI: Playing voice directly...");
 
-            playAudio(audioFile.toFile());
+            playPCM(response.body());
 
         } catch (Exception e) {
 
@@ -126,12 +117,63 @@ public class Voice {
     }
 
     // ==========================================
-    // SPLIT LONG TEXT
+    // DIRECT PCM PLAYBACK
+    // ==========================================
+
+    private static void playPCM(byte[] audioData)
+            throws Exception {
+
+        /*
+         * ElevenLabs pcm_44100:
+         *
+         * 44,100 Hz
+         * 16-bit
+         * mono
+         * signed
+         * little-endian
+         */
+
+        javax.sound.sampled.AudioFormat format =
+                new javax.sound.sampled.AudioFormat(
+                        44100,
+                        16,
+                        1,
+                        true,
+                        false);
+
+        AudioInputStream audioStream =
+                new AudioInputStream(
+                        new ByteArrayInputStream(
+                                audioData),
+                        format,
+                        audioData.length / 2);
+
+        Clip clip =
+                AudioSystem.getClip();
+
+        clip.open(audioStream);
+
+        clip.start();
+
+        // Wait until NOURI finishes speaking.
+        while (clip.isRunning()) {
+            Thread.sleep(20);
+        }
+
+        clip.stop();
+        clip.close();
+        audioStream.close();
+
+        System.out.println(
+                "NOURI: Finished speaking.");
+    }
+
+    // ==========================================
+    // SPLIT LONG ANSWERS
     // ==========================================
 
     private static String[] splitText(String text) {
 
-        // Short answers don't need splitting.
         if (text.length() <= 500) {
             return new String[]{text};
         }
@@ -160,7 +202,8 @@ public class Voice {
             } else {
 
                 if (current.length() > 0) {
-                    chunks.add(current.toString());
+                    chunks.add(
+                            current.toString());
                 }
 
                 current =
@@ -169,7 +212,8 @@ public class Voice {
         }
 
         if (current.length() > 0) {
-            chunks.add(current.toString());
+            chunks.add(
+                    current.toString());
         }
 
         return chunks.toArray(
@@ -188,36 +232,5 @@ public class Voice {
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n")
                 .replace("\r", "\\r");
-    }
-
-    // ==========================================
-    // PLAY AUDIO
-    // ==========================================
-
-    private static void playAudio(File file) {
-
-        try {
-
-            Process player =
-                    new ProcessBuilder(
-                            "cmd",
-                            "/c",
-                            "start",
-                            "",
-                            file.getAbsolutePath())
-                            .inheritIO()
-                            .start();
-
-            /*
-             * Wait for the Windows player process
-             * to launch before continuing.
-             */
-            Thread.sleep(300);
-
-        } catch (Exception e) {
-
-            System.out.println(
-                    "NOURI: Could not play audio.");
-        }
     }
 }
