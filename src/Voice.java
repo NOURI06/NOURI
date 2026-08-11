@@ -1,4 +1,8 @@
 import javax.sound.sampled.*;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -40,8 +44,10 @@ public class Voice {
                     System.getenv("ELEVENLABS_API_KEY");
 
             if (apiKey == null || apiKey.isEmpty()) {
+
                 System.out.println(
                         "NOURI: ElevenLabs API key not found.");
+
                 return;
             }
 
@@ -98,12 +104,15 @@ public class Voice {
                 return;
             }
 
+            byte[] audioData =
+                    response.body();
+
             System.out.println(
                     "NOURI: Audio received: "
-                    + response.body().length
+                    + audioData.length
                     + " bytes.");
 
-            playPCM(response.body());
+            playWAV(audioData);
 
         } catch (Exception e) {
 
@@ -115,7 +124,7 @@ public class Voice {
         }
     }
 
-    private static void playPCM(byte[] audioData)
+    private static void playWAV(byte[] audioData)
             throws Exception {
 
         AudioFormat format =
@@ -128,52 +137,49 @@ public class Voice {
                         44100,
                         false);
 
-        DataLine.Info info =
-                new DataLine.Info(
-                        SourceDataLine.class,
-                        format);
+        ByteArrayInputStream input =
+                new ByteArrayInputStream(audioData);
+
+        AudioInputStream audioStream =
+                new AudioInputStream(
+                        input,
+                        format,
+                        audioData.length / 2);
+
+        Path tempPath =
+                Files.createTempFile(
+                        "nouri_voice_",
+                        ".wav");
+
+        File wavFile =
+                tempPath.toFile();
 
         System.out.println(
-                "NOURI: Opening default Windows audio output...");
+                "NOURI: Creating WAV file...");
 
-        if (!AudioSystem.isLineSupported(info)) {
+        AudioSystem.write(
+                audioStream,
+                AudioFileFormat.Type.WAVE,
+                wavFile);
 
-            throw new LineUnavailableException(
-                    "Default audio system does not support "
-                    + "44100 Hz, 16-bit, mono PCM.");
-        }
-
-        SourceDataLine line =
-                (SourceDataLine)
-                        AudioSystem.getLine(info);
-
-        line.open(format);
-        line.start();
+        audioStream.close();
 
         System.out.println(
-                "NOURI: Speaking...");
+                "NOURI: Playing WAV through Windows...");
 
-        int offset = 0;
+        Process process =
+                new ProcessBuilder(
+                        "powershell.exe",
+                        "-NoProfile",
+                        "-Command",
+                        "(New-Object Media.SoundPlayer '" +
+                        wavFile.getAbsolutePath() +
+                        "').PlaySync()"
+                ).inheritIO().start();
 
-        while (offset < audioData.length) {
+        process.waitFor();
 
-            int length =
-                    Math.min(
-                            4096,
-                            audioData.length - offset);
-
-            int written =
-                    line.write(
-                            audioData,
-                            offset,
-                            length);
-
-            offset += written;
-        }
-
-        line.drain();
-        line.stop();
-        line.close();
+        Files.deleteIfExists(tempPath);
 
         System.out.println(
                 "NOURI: Finished speaking.");
