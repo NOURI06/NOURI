@@ -1,3 +1,4 @@
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -43,10 +44,8 @@ public class Voice {
                     System.getenv("ELEVENLABS_API_KEY");
 
             if (apiKey == null || apiKey.isEmpty()) {
-
                 System.out.println(
                         "NOURI: ElevenLabs API key not found.");
-
                 return;
             }
 
@@ -103,9 +102,6 @@ public class Voice {
                 return;
             }
 
-            System.out.println(
-                    "NOURI: Playing voice directly...");
-
             playPCM(response.body());
 
         } catch (Exception e) {
@@ -116,61 +112,44 @@ public class Voice {
         }
     }
 
-    // ==========================================
-    // DIRECT PCM PLAYBACK
-    // ==========================================
-
     private static void playPCM(byte[] audioData)
             throws Exception {
 
-        /*
-         * ElevenLabs pcm_44100:
-         *
-         * 44,100 Hz
-         * 16-bit
-         * mono
-         * signed
-         * little-endian
-         */
-
-        javax.sound.sampled.AudioFormat format =
-                new javax.sound.sampled.AudioFormat(
+        AudioFormat format =
+                new AudioFormat(
                         44100,
                         16,
                         1,
                         true,
                         false);
 
-        AudioInputStream audioStream =
+        AudioInputStream stream =
                 new AudioInputStream(
                         new ByteArrayInputStream(
                                 audioData),
                         format,
                         audioData.length / 2);
 
-        Clip clip =
-                AudioSystem.getClip();
+        Clip clip = AudioSystem.getClip();
 
-        clip.open(audioStream);
+        clip.open(stream);
+
+        System.out.println(
+                "NOURI: Speaking...");
 
         clip.start();
 
-        // Wait until NOURI finishes speaking.
         while (clip.isRunning()) {
             Thread.sleep(20);
         }
 
         clip.stop();
         clip.close();
-        audioStream.close();
+        stream.close();
 
         System.out.println(
                 "NOURI: Finished speaking.");
     }
-
-    // ==========================================
-    // SPLIT LONG ANSWERS
-    // ==========================================
 
     private static String[] splitText(String text) {
 
@@ -219,10 +198,6 @@ public class Voice {
         return chunks.toArray(
                 new String[0]);
     }
-
-    // ==========================================
-    // JSON ESCAPE
-    // ==========================================
 
     private static String escapeJson(
             String text) {
