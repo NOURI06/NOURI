@@ -18,10 +18,12 @@ public class SpeechToText {
             String command =
                     "Add-Type -AssemblyName System.Speech; " +
                     "$r = New-Object System.Speech.Recognition.SpeechRecognitionEngine('en-GB'); " +
-                    "$r.LoadGrammar(New-Object System.Speech.Recognition.DictationGrammar); " +
+                    "$grammar = New-Object System.Speech.Recognition.DictationGrammar; " +
+                    "$r.LoadGrammar($grammar); " +
                     "$r.SetInputToWaveFile('" + audioPath + "'); " +
                     "$result = $r.Recognize(); " +
-                    "if ($result) { Write-Output $result.Text }";
+                    "if ($result) { Write-Output $result.Text }; " +
+                    "$r.Dispose();";
 
             ProcessBuilder pb =
                     new ProcessBuilder(
