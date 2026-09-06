@@ -18,30 +18,9 @@ public class Voice {
         try {
 
             String safeText = text
-                    .replace("&", "&amp;")
-                    .replace("<", "&lt;")
-                    .replace(">", "&gt;")
-                    .replace("\"", "&quot;")
-                    .replace("'", "&apos;")
+                    .replace("'", "''")
                     .replace("\r", " ")
                     .replace("\n", " ");
-
-            String ssml =
-                    "<speak version=\"1.0\" " +
-                    "xmlns=\"http://www.w3.org/2001/10/synthesis\" " +
-                    "xml:lang=\"en-GB\">" +
-                    "<prosody rate=\"+8%\" pitch=\"+1st\">" +
-                    safeText +
-                    "</prosody>" +
-                    "</speak>";
-
-            /*
-             * Pass the SSML as a PowerShell single-quoted
-             * string. Any apostrophes inside the SSML are
-             * doubled so PowerShell treats them safely.
-             */
-            String safeSsml =
-                    ssml.replace("'", "''");
 
             String command =
                     "Add-Type -AssemblyName System.Speech; " +
@@ -49,10 +28,10 @@ public class Voice {
                     "System.Speech.Synthesis.SpeechSynthesizer; " +
                     "$voice.SelectVoice('Microsoft George'); " +
                     "$voice.Volume = 100; " +
-                    "$ssml = '" +
-                    safeSsml +
-                    "'; " +
-                    "$voice.SpeakSsml($ssml); " +
+                    "$voice.Rate = 1; " +
+                    "$voice.Speak('" +
+                    safeText +
+                    "'); " +
                     "$voice.Dispose()";
 
             ProcessBuilder process =
