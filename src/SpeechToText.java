@@ -17,12 +17,37 @@ public class SpeechToText {
 
             String command =
                     "Add-Type -AssemblyName System.Speech; " +
-                    "$r = New-Object System.Speech.Recognition.SpeechRecognitionEngine('en-GB'); " +
-                    "$grammar = New-Object System.Speech.Recognition.DictationGrammar; " +
+
+                    "$recognizers = " +
+                    "[System.Speech.Recognition.SpeechRecognitionEngine]::InstalledRecognizers(); " +
+
+                    "$info = $recognizers | " +
+                    "Where-Object { $_.Culture.Name -eq 'en-GB' } | " +
+                    "Select-Object -First 1; " +
+
+                    "if (-not $info) { " +
+                    "Write-Error 'English UK recognizer not found.'; " +
+                    "exit 1; " +
+                    "} " +
+
+                    "$r = New-Object " +
+                    "System.Speech.Recognition.SpeechRecognitionEngine($info); " +
+
+                    "$grammar = New-Object " +
+                    "System.Speech.Recognition.DictationGrammar; " +
+
                     "$r.LoadGrammar($grammar); " +
-                    "$r.SetInputToWaveFile('" + audioPath + "'); " +
+
+                    "$r.SetInputToWaveFile('" +
+                    audioPath +
+                    "'); " +
+
                     "$result = $r.Recognize(); " +
-                    "if ($result) { Write-Output $result.Text }; " +
+
+                    "if ($result) { " +
+                    "Write-Output $result.Text " +
+                    "} " +
+
                     "$r.Dispose();";
 
             ProcessBuilder pb =
