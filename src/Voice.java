@@ -17,7 +17,6 @@ public class Voice {
 
         try {
 
-            // Make text safe for SSML/XML
             String safeText = text
                     .replace("&", "&amp;")
                     .replace("<", "&lt;")
@@ -27,48 +26,41 @@ public class Voice {
                     .replace("\r", " ")
                     .replace("\n", " ");
 
-            /*
-             * NOURI voice settings:
-             *
-             * Voice  : Microsoft George
-             * Accent : English (Great Britain)
-             * Rate   : +8%
-             * Pitch  : +1 semitone
-             * Volume : 100
-             *
-             * No artificial breaks.
-             */
-
             String ssml =
-                    "<speak version=\"1.0\" "
-                    + "xmlns=\"http://www.w3.org/2001/10/synthesis\" "
-                    + "xml:lang=\"en-GB\">"
-                    + "<prosody rate=\"+8%\" pitch=\"+1st\">"
-                    + safeText
-                    + "</prosody>"
-                    + "</speak>";
+                    "<speak version=\"1.0\" " +
+                    "xmlns=\"http://www.w3.org/2001/10/synthesis\" " +
+                    "xml:lang=\"en-GB\">" +
+                    "<prosody rate=\"+8%\" pitch=\"+1st\">" +
+                    safeText +
+                    "</prosody>" +
+                    "</speak>";
 
-            // Escape the SSML for PowerShell
-            String safeSsml = ssml
-                    .replace("`", "``")
-                    .replace("\"", "`\"")
-                    .replace("$", "`$");
+            /*
+             * Pass the SSML as a PowerShell single-quoted
+             * string. Any apostrophes inside the SSML are
+             * doubled so PowerShell treats them safely.
+             */
+            String safeSsml =
+                    ssml.replace("'", "''");
 
             String command =
-                    "Add-Type -AssemblyName System.Speech; "
-                    + "$voice = New-Object "
-                    + "System.Speech.Synthesis.SpeechSynthesizer; "
-                    + "$voice.SelectVoice('Microsoft George'); "
-                    + "$voice.Volume = 100; "
-                    + "$voice.SpeakSsml(\""
-                    + safeSsml
-                    + "\"); "
-                    + "$voice.Dispose()";
+                    "Add-Type -AssemblyName System.Speech; " +
+                    "$voice = New-Object " +
+                    "System.Speech.Synthesis.SpeechSynthesizer; " +
+                    "$voice.SelectVoice('Microsoft George'); " +
+                    "$voice.Volume = 100; " +
+                    "$ssml = '" +
+                    safeSsml +
+                    "'; " +
+                    "$voice.SpeakSsml($ssml); " +
+                    "$voice.Dispose()";
 
             ProcessBuilder process =
                     new ProcessBuilder(
-                            "powershell",
+                            "powershell.exe",
                             "-NoProfile",
+                            "-ExecutionPolicy",
+                            "Bypass",
                             "-Command",
                             command
                     );
@@ -77,7 +69,6 @@ public class Voice {
 
             Process p = process.start();
 
-            // Show PowerShell output if there is an error
             BufferedReader reader =
                     new BufferedReader(
                             new InputStreamReader(
@@ -94,10 +85,13 @@ public class Voice {
             int exitCode = p.waitFor();
 
             if (exitCode == 0) {
+
                 System.out.println(
                         "NOURI: Windows voice finished."
                 );
+
             } else {
+
                 System.out.println(
                         "NOURI: Windows voice exited with code "
                                 + exitCode
