@@ -10,13 +10,38 @@ public class NouriVoiceAssistant {
         System.out.println("=================================");
         System.out.println("          NOURI ONLINE");
         System.out.println("=================================");
-        System.out.println("Say: Wake up, Buddy");
+        System.out.println("Clap twice to wake NOURI.");
 
         boolean conversationMode = false;
 
         while (true) {
 
             try {
+
+                // =================================
+                // WAITING FOR WAKE CLAPS
+                // =================================
+
+                if (!conversationMode) {
+
+                    WakeWord.waitForDoubleClap();
+
+                    System.out.println(
+                            "NOURI: Wake signal detected."
+                    );
+
+                    conversationMode = true;
+
+                    Voice.speak(
+                            "Greetings. How can I help you, sir?"
+                    );
+
+                    continue;
+                }
+
+                // =================================
+                // NORMAL CONVERSATION
+                // =================================
 
                 java.io.File audioFile =
                         microphone.recordUntilSilence();
@@ -32,28 +57,16 @@ public class NouriVoiceAssistant {
                     continue;
                 }
 
-                System.out.println("You: " + text);
-
-                if (!conversationMode) {
-
-                    if (WakeWord.isWakeWord(text)) {
-
-                        System.out.println(
-                                "NOURI: Wake word detected."
-                        );
-
-                        conversationMode = true;
-
-                        Voice.speak(
-                                "Greetings. How can I help you, sir?"
-                        );
-                    }
-
-                    continue;
-                }
+                System.out.println(
+                        "You: " + text
+                );
 
                 String lower =
                         text.toLowerCase().trim();
+
+                // =================================
+                // SLEEP COMMANDS
+                // =================================
 
                 if (lower.contains("go to sleep")
                         || lower.contains("sleep now")
@@ -73,6 +86,10 @@ public class NouriVoiceAssistant {
                     continue;
                 }
 
+                // =================================
+                // PROCESS COMMAND
+                // =================================
+
                 String response =
                         commands.execute(text);
 
@@ -81,16 +98,21 @@ public class NouriVoiceAssistant {
                     continue;
                 }
 
-                System.out.println("NOURI: " + response);
+                System.out.println(
+                        "NOURI: " + response
+                );
 
                 String voiceResponse =
                         prepareVoiceResponse(response);
 
                 System.out.println(
-                        "NOURI VOICE: " + voiceResponse
+                        "NOURI VOICE: "
+                                + voiceResponse
                 );
 
-                Voice.speak(voiceResponse);
+                Voice.speak(
+                        voiceResponse
+                );
 
             } catch (Exception e) {
 
@@ -102,7 +124,8 @@ public class NouriVoiceAssistant {
         }
     }
 
-    private static String prepareVoiceResponse(String response) {
+    private static String prepareVoiceResponse(
+            String response) {
 
         response = response
                 .replace("\n", " ")
@@ -112,32 +135,44 @@ public class NouriVoiceAssistant {
                 .replace("  ", " ")
                 .trim();
 
-        if (response.length() <= MAX_VOICE_CHARACTERS) {
+        if (response.length()
+                <= MAX_VOICE_CHARACTERS) {
+
             return response;
         }
 
-        int limit = MAX_VOICE_CHARACTERS;
+        int limit =
+                MAX_VOICE_CHARACTERS;
 
-        int end = response.lastIndexOf(
-                ". ",
-                limit
-        );
+        int end =
+                response.lastIndexOf(
+                        ". ",
+                        limit
+                );
 
         if (end < 100) {
-            end = response.lastIndexOf(
-                    ", ",
-                    limit
-            );
+
+            end =
+                    response.lastIndexOf(
+                            ", ",
+                            limit
+                    );
         }
 
         if (end < 100) {
+
             end = limit;
+
         } else {
+
             end += 1;
         }
 
         String shortResponse =
-                response.substring(0, end).trim();
+                response.substring(
+                        0,
+                        end
+                ).trim();
 
         return shortResponse
                 + " I have more details if you want them.";
