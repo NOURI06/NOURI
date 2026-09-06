@@ -2,6 +2,8 @@ import javax.sound.sampled.*;
 
 public class WakeWord {
 
+    private static final String WAKE_WORD = "buddy";
+
     private static final float SAMPLE_RATE = 16000;
     private static final int SAMPLE_SIZE = 16;
     private static final int CHANNELS = 1;
@@ -10,7 +12,6 @@ public class WakeWord {
 
     private static final long MIN_CLAP_GAP = 100;
     private static final long MAX_CLAP_GAP = 1000;
-
     private static final long CLAP_COOLDOWN = 120;
 
     private static final AudioFormat FORMAT =
@@ -22,7 +23,30 @@ public class WakeWord {
                     false
             );
 
-    public static boolean waitForDoubleClap() throws Exception {
+    // Keeps compatibility with NouriWindow.java
+    public static boolean isWakeWord(String text) {
+
+        if (text == null) {
+            return false;
+        }
+
+        String normalized =
+                text.toLowerCase()
+                        .trim()
+                        .replace(",", "")
+                        .replace(".", "")
+                        .replace("!", "")
+                        .replace("?", "");
+
+        return normalized.equals(WAKE_WORD)
+                || normalized.startsWith(WAKE_WORD + " ")
+                || normalized.endsWith(" " + WAKE_WORD)
+                || normalized.contains(" " + WAKE_WORD + " ");
+    }
+
+    // New double-clap wake detector
+    public static boolean waitForDoubleClap()
+            throws Exception {
 
         DataLine.Info info =
                 new DataLine.Info(
@@ -75,9 +99,8 @@ public class WakeWord {
 
             if (volume > CLAP_THRESHOLD) {
 
-                // Prevent one loud sound from being
-                // detected as multiple claps.
-                if (now - lastClapTime < CLAP_COOLDOWN) {
+                if (now - lastClapTime
+                        < CLAP_COOLDOWN) {
                     continue;
                 }
 
@@ -87,7 +110,6 @@ public class WakeWord {
                         "NOURI: Clap detected."
                 );
 
-                // First clap
                 if (firstClapTime == 0) {
 
                     firstClapTime = now;
@@ -98,7 +120,6 @@ public class WakeWord {
                 long gap =
                         now - firstClapTime;
 
-                // Second clap at the right time
                 if (gap >= MIN_CLAP_GAP
                         && gap <= MAX_CLAP_GAP) {
 
@@ -112,10 +133,7 @@ public class WakeWord {
                     return true;
                 }
 
-                // Too much time passed.
-                // Treat this as a new first clap.
                 if (gap > MAX_CLAP_GAP) {
-
                     firstClapTime = now;
                 }
             }
@@ -128,8 +146,7 @@ public class WakeWord {
 
         long sum = 0;
 
-        int samples =
-                bytesRead / 2;
+        int samples = bytesRead / 2;
 
         for (int i = 0;
              i < bytesRead - 1;
