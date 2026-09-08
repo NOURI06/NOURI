@@ -30,3 +30,8 @@ public class Commands {
         return gemini.ask(command);
     }
 }
+String pcResponse = PCController.handle(text);
+
+if (pcResponse != null) {
+    return pcResponse;
+}
