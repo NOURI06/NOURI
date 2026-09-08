@@ -11,81 +11,154 @@ public class Voice {
     private static final String OUTPUT =
             "C:\\Users\\dell\\Desktop\\NOURI\\piper\\nouri_voice.wav";
 
-    public static void speak(String text) {
+    private static Process piperProcess;
+    private static BufferedWriter piperInput;
 
-        if (text == null || text.isBlank()) {
+    private static void startPiper() throws Exception {
+
+        if (piperProcess != null
+                && piperProcess.isAlive()) {
             return;
         }
 
-        System.out.println("NOURI: Speaking...");
+        System.out.println(
+                "NOURI: Starting Piper..."
+        );
+
+        ProcessBuilder builder =
+                new ProcessBuilder(
+                        PIPER,
+                        "--model",
+                        MODEL,
+                        "--length_scale",
+                        "1.00",
+                        "--noise_scale",
+                        "0.75",
+                        "--noise_w",
+                        "0.85",
+                        "--sentence_silence",
+                        "0.15",
+                        "--output_dir",
+                        new File(
+                                OUTPUT
+                        ).getParent()
+                );
+
+        builder.redirectErrorStream(true);
+
+        piperProcess =
+                builder.start();
+
+        piperInput =
+                new BufferedWriter(
+                        new OutputStreamWriter(
+                                piperProcess.getOutputStream()
+                        )
+                );
+
+        System.out.println(
+                "NOURI: Piper is ready."
+        );
+    }
+
+    public static synchronized void speak(
+            String text) {
+
+        if (text == null
+                || text.isBlank()) {
+            return;
+        }
 
         try {
 
-            ProcessBuilder process =
-                    new ProcessBuilder(
-                            PIPER,
-                            "--model",
-                            MODEL,
-                            "--length_scale",
-                            "1.00",
-                            "--noise_scale",
-                            "0.75",
-                            "--noise_w",
-                            "0.85",
-                            "--sentence_silence",
-                            "0.15",
-                            "--output_file",
-                            OUTPUT
+            startPiper();
+
+            System.out.println(
+                    "NOURI: Speaking..."
+            );
+
+            /*
+             * Send text directly to the
+             * already-running Piper process.
+             */
+
+            piperInput.write(text);
+            piperInput.newLine();
+            piperInput.flush();
+
+            /*
+             * Piper's --output_dir mode creates
+             * a WAV for each line of input.
+             *
+             * We wait for the generated file,
+             * then play it.
+             */
+
+            File folder =
+                    new File(
+                            new File(OUTPUT)
+                                    .getParent()
                     );
 
-            process.redirectErrorStream(true);
+            File newestFile = null;
 
-            Process p = process.start();
+            long start =
+                    System.currentTimeMillis();
 
-            try (BufferedWriter writer =
-                         new BufferedWriter(
-                                 new OutputStreamWriter(
-                                         p.getOutputStream()
-                                 )
-                         )) {
+            while (System.currentTimeMillis()
+                    - start < 30000) {
 
-                writer.write(text);
-                writer.newLine();
+                File[] files =
+                        folder.listFiles(
+                                (dir, name) ->
+                                        name.toLowerCase()
+                                                .endsWith(".wav")
+                );
+
+                if (files != null
+                        && files.length > 0) {
+
+                    File candidate =
+                            files[files.length - 1];
+
+                    if (newestFile == null
+                            || candidate.lastModified()
+                            > newestFile.lastModified()) {
+
+                        newestFile = candidate;
+                    }
+
+                    if (newestFile != null
+                            && newestFile.length() > 44) {
+
+                        break;
+                    }
+                }
+
+                Thread.sleep(50);
             }
 
-            BufferedReader reader =
-                    new BufferedReader(
-                            new InputStreamReader(
-                                    p.getInputStream()
-                            )
-                    );
-
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-            }
-
-            int exitCode = p.waitFor();
-
-            if (exitCode != 0) {
+            if (newestFile == null) {
 
                 System.out.println(
-                        "NOURI: Piper failed. Exit code: "
-                                + exitCode
+                        "NOURI: Piper did not create audio."
                 );
 
                 return;
             }
 
-            // Play the generated WAV
             Process player =
                     new ProcessBuilder(
                             "powershell.exe",
                             "-NoProfile",
                             "-Command",
                             "(New-Object Media.SoundPlayer '" +
-                                    OUTPUT.replace("'", "''") +
+                                    newestFile
+                                            .getAbsolutePath()
+                                            .replace(
+                                                    "'",
+                                                    "''"
+                                            ) +
                                     "').PlaySync()"
                     ).start();
 
@@ -101,6 +174,22 @@ public class Voice {
                     "NOURI Piper voice error: "
                             + e.getMessage()
             );
+        }
+    }
+
+    public static synchronized void shutdown() {
+
+        try {
+
+            if (piperInput != null) {
+                piperInput.close();
+            }
+
+            if (piperProcess != null) {
+                piperProcess.destroy();
+            }
+
+        } catch (Exception ignored) {
         }
     }
 }
