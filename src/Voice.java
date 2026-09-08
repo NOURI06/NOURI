@@ -2,6 +2,15 @@ import java.io.*;
 
 public class Voice {
 
+    private static final String PIPER =
+            "C:\\Users\\dell\\Desktop\\NOURI\\piper\\piper\\piper.exe";
+
+    private static final String MODEL =
+            "C:\\Users\\dell\\Desktop\\NOURI\\piper\\en_GB-northern_english_male-medium.onnx";
+
+    private static final String OUTPUT =
+            "C:\\Users\\dell\\Desktop\\NOURI\\piper\\nouri_voice.wav";
+
     public static void speak(String text) {
 
         if (text == null || text.isBlank()) {
@@ -10,43 +19,39 @@ public class Voice {
 
         System.out.println("NOURI: Speaking...");
 
-        windowsSpeak(text);
-    }
-
-    private static void windowsSpeak(String text) {
-
         try {
-
-            String safeText = text
-                    .replace("'", "''")
-                    .replace("\r", " ")
-                    .replace("\n", " ");
-
-            String command =
-                    "Add-Type -AssemblyName System.Speech; " +
-                    "$voice = New-Object " +
-                    "System.Speech.Synthesis.SpeechSynthesizer; " +
-                    "$voice.SelectVoice('Microsoft George'); " +
-                    "$voice.Volume = 100; " +
-                    "$voice.Rate = 1; " +
-                    "$voice.Speak('" +
-                    safeText +
-                    "'); " +
-                    "$voice.Dispose()";
 
             ProcessBuilder process =
                     new ProcessBuilder(
-                            "powershell.exe",
-                            "-NoProfile",
-                            "-ExecutionPolicy",
-                            "Bypass",
-                            "-Command",
-                            command
+                            PIPER,
+                            "--model",
+                            MODEL,
+                            "--length_scale",
+                            "1.00",
+                            "--noise_scale",
+                            "0.75",
+                            "--noise_w",
+                            "0.85",
+                            "--sentence_silence",
+                            "0.15",
+                            "--output_file",
+                            OUTPUT
                     );
 
             process.redirectErrorStream(true);
 
             Process p = process.start();
+
+            try (BufferedWriter writer =
+                         new BufferedWriter(
+                                 new OutputStreamWriter(
+                                         p.getOutputStream()
+                                 )
+                         )) {
+
+                writer.write(text);
+                writer.newLine();
+            }
 
             BufferedReader reader =
                     new BufferedReader(
@@ -63,24 +68,37 @@ public class Voice {
 
             int exitCode = p.waitFor();
 
-            if (exitCode == 0) {
+            if (exitCode != 0) {
 
                 System.out.println(
-                        "NOURI: Windows voice finished."
-                );
-
-            } else {
-
-                System.out.println(
-                        "NOURI: Windows voice exited with code "
+                        "NOURI: Piper failed. Exit code: "
                                 + exitCode
                 );
+
+                return;
             }
+
+            // Play the generated WAV
+            Process player =
+                    new ProcessBuilder(
+                            "powershell.exe",
+                            "-NoProfile",
+                            "-Command",
+                            "(New-Object Media.SoundPlayer '" +
+                                    OUTPUT.replace("'", "''") +
+                                    "').PlaySync()"
+                    ).start();
+
+            player.waitFor();
+
+            System.out.println(
+                    "NOURI: Voice finished."
+            );
 
         } catch (Exception e) {
 
             System.out.println(
-                    "NOURI Windows voice error: "
+                    "NOURI Piper voice error: "
                             + e.getMessage()
             );
         }
