@@ -1,5 +1,5 @@
-import javax.sound.sampled.*;
 import java.io.*;
+import java.nio.file.*;
 
 public class Voice {
 
@@ -9,43 +9,27 @@ public class Voice {
     private static final String MODEL =
             "C:\\Users\\dell\\Desktop\\NOURI\\piper\\en_GB-northern_english_male-medium.onnx";
 
-    /*
-     * IMPORTANT:
-     * This must match the sample rate in the
-     * Piper model's .onnx.json file.
-     *
-     * Your Northern English voice is normally
-     * 22050 Hz, 16-bit, mono.
-     */
-    private static final float SAMPLE_RATE = 22050;
-
-    private static final int SAMPLE_SIZE = 16;
-    private static final int CHANNELS = 1;
-
     private static Process piperProcess;
     private static BufferedWriter piperInput;
-    private static Thread audioThread;
+    private static Thread piperOutputThread;
 
-    private static final Object LOCK =
-            new Object();
+    private static final Object LOCK = new Object();
 
-    private static void startPiper()
-            throws Exception {
+    // Start Piper once
+    private static void startPiper() throws Exception {
 
-        if (piperProcess != null
-                && piperProcess.isAlive()) {
+        if (piperProcess != null && piperProcess.isAlive()) {
             return;
         }
 
-        System.out.println(
-                "NOURI: Loading Piper voice..."
-        );
+        System.out.println("NOURI: Loading Piper voice...");
 
         ProcessBuilder builder =
                 new ProcessBuilder(
                         PIPER,
                         "--model",
                         MODEL,
+                        "--json-input",
                         "--length_scale",
                         "1.00",
                         "--noise_scale",
@@ -53,20 +37,13 @@ public class Voice {
                         "--noise_w",
                         "0.85",
                         "--sentence_silence",
-                        "0.15",
-                        "--output-raw"
+                        "0.15"
                 );
 
-        /*
-         * Piper audio goes to stdout.
-         * Piper diagnostic messages go to stderr.
-         */
-        builder.redirectError(
-                ProcessBuilder.Redirect.INHERIT
-        );
+        // Piper diagnostics go to console
+        builder.redirectError(ProcessBuilder.Redirect.INHERIT);
 
-        piperProcess =
-                builder.start();
+        piperProcess = builder.start();
 
         piperInput =
                 new BufferedWriter(
@@ -75,20 +52,48 @@ public class Voice {
                         )
                 );
 
+        /*
+         * Piper doesn't need its stdout for WAV output,
+         * but we must continuously consume it so the
+         * process can never become blocked.
+         */
+        piperOutputThread =
+                new Thread(() -> {
+
+                    try {
+
+                        InputStream input =
+                                piperProcess.getInputStream();
+
+                        byte[] buffer =
+                                new byte[1024];
+
+                        while (input.read(buffer) != -1) {
+                            // Discard unused stdout
+                        }
+
+                    } catch (Exception ignored) {
+                    }
+
+                });
+
+        piperOutputThread.setDaemon(true);
+        piperOutputThread.start();
+
         System.out.println(
                 "NOURI: Piper loaded and ready."
         );
     }
 
-    public static void speak(
-            String text) {
+    public static void speak(String text) {
 
-        if (text == null
-                || text.isBlank()) {
+        if (text == null || text.isBlank()) {
             return;
         }
 
         synchronized (LOCK) {
+
+            Path outputFile = null;
 
             try {
 
@@ -99,17 +104,87 @@ public class Voice {
                 );
 
                 /*
-                 * Send the sentence to the
-                 * already-loaded Piper process.
+                 * Create a unique WAV filename.
                  */
-                piperInput.write(text);
+                outputFile =
+                        Files.createTempFile(
+                                "nouri_voice_",
+                                ".wav"
+                        );
+
+                /*
+                 * Escape JSON characters.
+                 */
+                String safeText =
+                        text.replace("\\", "\\\\")
+                                .replace("\"", "\\\"")
+                                .replace("\r", " ")
+                                .replace("\n", " ");
+
+                String safePath =
+                        outputFile
+                                .toAbsolutePath()
+                                .toString()
+                                .replace("\\", "\\\\")
+                                .replace("\"", "\\\"");
+
+                /*
+                 * Send one JSON request to the
+                 * already-running Piper process.
+                 */
+                String json =
+                        "{\"text\":\""
+                                + safeText
+                                + "\",\"output_file\":\""
+                                + safePath
+                                + "\"}";
+
+                piperInput.write(json);
                 piperInput.newLine();
                 piperInput.flush();
 
                 /*
-                 * Read Piper's raw PCM audio.
+                 * Wait for Piper to finish this
+                 * particular WAV.
                  */
-                playPiperAudio();
+                long start =
+                        System.currentTimeMillis();
+
+                while (true) {
+
+                    if (Files.exists(outputFile)
+                            && Files.size(outputFile) > 44) {
+                        break;
+                    }
+
+                    if (System.currentTimeMillis()
+                            - start > 30000) {
+
+                        throw new Exception(
+                                "Piper timed out."
+                        );
+                    }
+
+                    Thread.sleep(20);
+                }
+
+                /*
+                 * Play the generated WAV.
+                 */
+                Process player =
+                        new ProcessBuilder(
+                                "powershell.exe",
+                                "-NoProfile",
+                                "-Command",
+                                "(New-Object Media.SoundPlayer '"
+                                        + outputFile
+                                        .toAbsolutePath()
+                                        .toString()
+                                        .replace("'", "''")
+                                        + "').PlaySync()"
+                        ).start();
+
+                player.waitFor();
 
                 System.out.println(
                         "NOURI: Voice finished."
@@ -123,61 +198,18 @@ public class Voice {
                 );
 
                 restartPiper();
+
+            } finally {
+
+                if (outputFile != null) {
+
+                    try {
+                        Files.deleteIfExists(outputFile);
+                    } catch (Exception ignored) {
+                    }
+                }
             }
         }
-    }
-
-    private static void playPiperAudio()
-            throws Exception {
-
-        AudioFormat format =
-                new AudioFormat(
-                        AudioFormat.Encoding.PCM_SIGNED,
-                        SAMPLE_RATE,
-                        SAMPLE_SIZE,
-                        CHANNELS,
-                        2,
-                        SAMPLE_RATE,
-                        false
-                );
-
-        DataLine.Info info =
-                new DataLine.Info(
-                        SourceDataLine.class,
-                        format
-                );
-
-        SourceDataLine speakers =
-                (SourceDataLine)
-                        AudioSystem.getLine(info);
-
-        speakers.open(format);
-        speakers.start();
-
-        InputStream audio =
-                piperProcess.getInputStream();
-
-        byte[] buffer =
-                new byte[4096];
-
-        int bytesRead;
-
-        while ((bytesRead =
-                audio.read(buffer)) != -1) {
-
-            if (bytesRead > 0) {
-
-                speakers.write(
-                        buffer,
-                        0,
-                        bytesRead
-                );
-            }
-        }
-
-        speakers.drain();
-        speakers.stop();
-        speakers.close();
     }
 
     private static void restartPiper() {
