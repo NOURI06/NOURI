@@ -248,26 +248,3 @@ public class NouriVoiceAssistant {
                 + " I have more details if you want them.";
     }
 }
-```
-
-### Then sync it from GitHub
-
-After you put this file on GitHub:
-
-```bat
-cd C:\Users\dell\Desktop\NOURI
-git fetch origin
-git checkout origin/main -- src\NouriVoiceAssistant.java
-javac -d out src\*.java
-java -cp out NouriVoiceAssistant
-```
-
-The important fix is that after:
-
-**👏👏 → greeting**
-
-NOURI now goes directly to:
-
-**🎤 Listening → speech recognition → command → response → listening again**
-
-It will **stay awake** until you say **“go to sleep”**.
