@@ -4,6 +4,10 @@ public class SpeechToText {
 
     public static String transcribe(Path audioFile) {
 
+        if (audioFile == null) {
+            return null;
+        }
+
         try {
 
             System.out.println(
@@ -15,11 +19,20 @@ public class SpeechToText {
                             .toString()
                             .replace("'", "''");
 
+            /*
+             * We use a command grammar instead of
+             * DictationGrammar.
+             *
+             * This gives Windows a much smaller
+             * vocabulary to recognize accurately.
+             */
+
             String command =
                     "Add-Type -AssemblyName System.Speech; " +
 
                     "$recognizers = " +
-                    "[System.Speech.Recognition.SpeechRecognitionEngine]::InstalledRecognizers(); " +
+                    "[System.Speech.Recognition.SpeechRecognitionEngine]" +
+                    "::InstalledRecognizers(); " +
 
                     "$info = $recognizers | " +
                     "Where-Object { $_.Culture.Name -eq 'en-GB' } | " +
@@ -33,8 +46,59 @@ public class SpeechToText {
                     "$r = New-Object " +
                     "System.Speech.Recognition.SpeechRecognitionEngine($info); " +
 
-                    "$grammar = New-Object " +
-                    "System.Speech.Recognition.DictationGrammar; " +
+                    "$choices = New-Object " +
+                    "System.Collections.Generic.List[string]; " +
+
+                    /*
+                     * Basic NOURI commands
+                     */
+
+                    "$choices.Add('open calculator'); " +
+                    "$choices.Add('launch calculator'); " +
+
+                    "$choices.Add('open notepad'); " +
+                    "$choices.Add('launch notepad'); " +
+
+                    "$choices.Add('open file explorer'); " +
+                    "$choices.Add('open explorer'); " +
+
+                    "$choices.Add('open nouri folder'); " +
+
+                    "$choices.Add('lock my pc'); " +
+                    "$choices.Add('lock the computer'); " +
+
+                    "$choices.Add('what time is it'); " +
+                    "$choices.Add('what is the time'); " +
+
+                    "$choices.Add('what is today''s date'); " +
+                    "$choices.Add('what date is it'); " +
+
+                    "$choices.Add('hello nouri'); " +
+                    "$choices.Add('hello'); " +
+
+                    "$choices.Add('go to sleep'); " +
+                    "$choices.Add('sleep now'); " +
+                    "$choices.Add('stop listening'); " +
+                    "$choices.Add('goodbye'); " +
+
+                    /*
+                     * Create a Choices grammar.
+                     */
+
+                    "$choicesObject = " +
+                    "New-Object System.Speech.Recognition.Choices; " +
+
+                    "foreach ($choice in $choices) { " +
+                    "$choicesObject.Add($choice); " +
+                    "} " +
+
+                    "$builder = " +
+                    "New-Object System.Speech.Recognition.GrammarBuilder; " +
+
+                    "$builder.Append($choicesObject); " +
+
+                    "$grammar = " +
+                    "New-Object System.Speech.Recognition.Grammar($builder); " +
 
                     "$r.LoadGrammar($grammar); " +
 
@@ -62,19 +126,22 @@ public class SpeechToText {
 
             pb.redirectErrorStream(true);
 
-            Process process = pb.start();
+            Process process =
+                    pb.start();
 
             String output =
                     new String(
-                            process.getInputStream().readAllBytes()
+                            process.getInputStream()
+                                    .readAllBytes()
                     ).trim();
 
-            int exitCode = process.waitFor();
+            int exitCode =
+                    process.waitFor();
 
             if (exitCode != 0) {
 
                 System.out.println(
-                        "NOURI: Windows speech recognition failed."
+                        "NOURI: Speech recognition failed."
                 );
 
                 System.out.println(output);
@@ -85,7 +152,7 @@ public class SpeechToText {
             if (output.isBlank()) {
 
                 System.out.println(
-                        "NOURI: I couldn't understand the audio."
+                        "NOURI: I couldn't understand the command."
                 );
 
                 return null;
@@ -100,7 +167,8 @@ public class SpeechToText {
         } catch (Exception e) {
 
             System.out.println(
-                    "NOURI STT error: " + e.getMessage()
+                    "NOURI STT error: "
+                            + e.getMessage()
             );
 
             return null;
