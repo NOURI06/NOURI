@@ -11,18 +11,22 @@ public class Voice {
 
     private static Process piperProcess;
     private static BufferedWriter piperInput;
-    private static Thread piperOutputThread;
+    private static Thread outputReader;
 
     private static final Object LOCK = new Object();
 
-    // Start Piper once
+
     private static void startPiper() throws Exception {
 
-        if (piperProcess != null && piperProcess.isAlive()) {
+        if (piperProcess != null
+                && piperProcess.isAlive()) {
             return;
         }
 
-        System.out.println("NOURI: Loading Piper voice...");
+        System.out.println(
+                "NOURI: Loading Piper voice..."
+        );
+
 
         ProcessBuilder builder =
                 new ProcessBuilder(
@@ -40,10 +44,17 @@ public class Voice {
                         "0.15"
                 );
 
-        // Piper diagnostics go to console
-        builder.redirectError(ProcessBuilder.Redirect.INHERIT);
+
+        /*
+         * Piper messages go to the console.
+         */
+        builder.redirectError(
+                ProcessBuilder.Redirect.INHERIT
+        );
+
 
         piperProcess = builder.start();
+
 
         piperInput =
                 new BufferedWriter(
@@ -52,24 +63,30 @@ public class Voice {
                         )
                 );
 
+
         /*
-         * Piper doesn't need its stdout for WAV output,
-         * but we must continuously consume it so the
-         * process can never become blocked.
+         * IMPORTANT:
+         *
+         * Keep reading Piper's stdout.
+         * Otherwise the process can eventually block
+         * when its output buffer becomes full.
          */
-        piperOutputThread =
+        outputReader =
                 new Thread(() -> {
 
                     try {
 
-                        InputStream input =
-                                piperProcess.getInputStream();
+                        BufferedReader reader =
+                                new BufferedReader(
+                                        new InputStreamReader(
+                                                piperProcess
+                                                        .getInputStream()
+                                        )
+                                );
 
-                        byte[] buffer =
-                                new byte[1024];
 
-                        while (input.read(buffer) != -1) {
-                            // Discard unused stdout
+                        while (reader.readLine() != null) {
+                            // Piper output intentionally ignored.
                         }
 
                     } catch (Exception ignored) {
@@ -77,19 +94,23 @@ public class Voice {
 
                 });
 
-        piperOutputThread.setDaemon(true);
-        piperOutputThread.start();
+
+        outputReader.setDaemon(true);
+        outputReader.start();
+
 
         System.out.println(
                 "NOURI: Piper loaded and ready."
         );
     }
 
+
     public static void speak(String text) {
 
         if (text == null || text.isBlank()) {
             return;
         }
+
 
         synchronized (LOCK) {
 
@@ -99,12 +120,14 @@ public class Voice {
 
                 startPiper();
 
+
                 System.out.println(
                         "NOURI: Speaking..."
                 );
 
+
                 /*
-                 * Create a unique WAV filename.
+                 * Create a unique WAV file.
                  */
                 outputFile =
                         Files.createTempFile(
@@ -112,14 +135,14 @@ public class Voice {
                                 ".wav"
                         );
 
-                /*
-                 * Escape JSON characters.
-                 */
+
                 String safeText =
-                        text.replace("\\", "\\\\")
+                        text
+                                .replace("\\", "\\\\")
                                 .replace("\"", "\\\"")
                                 .replace("\r", " ")
                                 .replace("\n", " ");
+
 
                 String safePath =
                         outputFile
@@ -128,34 +151,42 @@ public class Voice {
                                 .replace("\\", "\\\\")
                                 .replace("\"", "\\\"");
 
+
                 /*
-                 * Send one JSON request to the
-                 * already-running Piper process.
+                 * Send ONE JSON request to Piper.
+                 *
+                 * Piper supports output_file for JSON input.
                  */
                 String json =
                         "{\"text\":\""
                                 + safeText
-                                + "\",\"output_file\":\""
+                                + "\","
+                                + "\"output_file\":\""
                                 + safePath
                                 + "\"}";
+
 
                 piperInput.write(json);
                 piperInput.newLine();
                 piperInput.flush();
 
+
                 /*
-                 * Wait for Piper to finish this
-                 * particular WAV.
+                 * Wait until Piper has actually created
+                 * the WAV file.
                  */
                 long start =
                         System.currentTimeMillis();
+
 
                 while (true) {
 
                     if (Files.exists(outputFile)
                             && Files.size(outputFile) > 44) {
+
                         break;
                     }
+
 
                     if (System.currentTimeMillis()
                             - start > 30000) {
@@ -165,11 +196,16 @@ public class Voice {
                         );
                     }
 
+
                     Thread.sleep(20);
                 }
 
+
                 /*
-                 * Play the generated WAV.
+                 * Play the WAV ourselves.
+                 *
+                 * This is the important part:
+                 * Java controls playback instead of Piper.
                  */
                 Process player =
                         new ProcessBuilder(
@@ -178,17 +214,23 @@ public class Voice {
                                 "-Command",
                                 "(New-Object Media.SoundPlayer '"
                                         + outputFile
-                                        .toAbsolutePath()
-                                        .toString()
-                                        .replace("'", "''")
+                                                .toAbsolutePath()
+                                                .toString()
+                                                .replace(
+                                                        "'",
+                                                        "''"
+                                                )
                                         + "').PlaySync()"
                         ).start();
 
+
                 player.waitFor();
+
 
                 System.out.println(
                         "NOURI: Voice finished."
                 );
+
 
             } catch (Exception e) {
 
@@ -197,20 +239,27 @@ public class Voice {
                                 + e.getMessage()
                 );
 
+
                 restartPiper();
+
 
             } finally {
 
                 if (outputFile != null) {
 
                     try {
-                        Files.deleteIfExists(outputFile);
+
+                        Files.deleteIfExists(
+                                outputFile
+                        );
+
                     } catch (Exception ignored) {
                     }
                 }
             }
         }
     }
+
 
     private static void restartPiper() {
 
@@ -223,6 +272,7 @@ public class Voice {
         } catch (Exception ignored) {
         }
 
+
         try {
 
             if (piperProcess != null) {
@@ -232,9 +282,11 @@ public class Voice {
         } catch (Exception ignored) {
         }
 
+
         piperProcess = null;
         piperInput = null;
     }
+
 
     public static void shutdown() {
 
