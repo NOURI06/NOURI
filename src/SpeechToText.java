@@ -34,15 +34,72 @@ public class SpeechToText {
                 "Select-Object -First 1; " +
 
                 "if (-not $info) { " +
-                "  Write-Output '__ERROR__'; " +
+                "  $info = $recognizers | " +
+                "  Select-Object -First 1; " +
+                "} " +
+
+                "if (-not $info) { " +
+                "  Write-Output '__ERROR__No speech recognizer found'; " +
                 "  exit 1; " +
                 "} " +
 
                 "$r = New-Object " +
                 "System.Speech.Recognition.SpeechRecognitionEngine($info); " +
 
+                "$choices = New-Object " +
+                "System.Speech.Recognition.Choices; " +
+
+                "$choices.Add([string[]]@(" +
+
+                "'open calculator'," +
+                "'open calc'," +
+                "'launch calculator'," +
+
+                "'open notepad'," +
+                "'launch notepad'," +
+
+                "'open browser'," +
+                "'open chrome'," +
+                "'launch browser'," +
+
+                "'open file explorer'," +
+                "'open explorer'," +
+
+                "'open nouri'," +
+
+                "'go to sleep'," +
+                "'sleep now'," +
+                "'stop listening'," +
+                "'goodbye'," +
+
+                "'hello'," +
+                "'hi'," +
+                "'hey'," +
+
+                "'who are you'," +
+                "'what are you'," +
+
+                "'what time is it'," +
+                "'what is the time'," +
+                "'time'," +
+
+                "'what is today's date'," +
+                "'what's today's date'," +
+                "'what date is it'," +
+                "'date'" +
+
+                ")); " +
+
+                "$gb = New-Object " +
+                "System.Speech.Recognition.GrammarBuilder; " +
+
+                "$gb.Culture = $info.Culture; " +
+                "$gb.Append($choices); " +
+
                 "$grammar = New-Object " +
-                "System.Speech.Recognition.DictationGrammar; " +
+                "System.Speech.Recognition.Grammar($gb); " +
+
+                "$grammar.Name = 'NOURICommands'; " +
 
                 "$r.LoadGrammar($grammar); " +
 
@@ -53,10 +110,10 @@ public class SpeechToText {
                 "[TimeSpan]::FromMilliseconds(1000); " +
 
                 "$r.EndSilenceTimeout = " +
-                "[TimeSpan]::FromMilliseconds(300); " +
+                "[TimeSpan]::FromMilliseconds(400); " +
 
                 "$r.EndSilenceTimeoutAmbiguous = " +
-                "[TimeSpan]::FromMilliseconds(500); " +
+                "[TimeSpan]::FromMilliseconds(600); " +
 
                 "Write-Output '__READY__'; " +
 
@@ -73,23 +130,27 @@ public class SpeechToText {
 
                 "    $result = $r.Recognize(); " +
 
-                "    if ($result) { " +
-                "      Write-Output ('__RESULT__' + $result.Text); " +
+                "    if ($result -and $result.Confidence -ge 0.45) { " +
+
+                "      Write-Output " +
+                "      ('__RESULT__' + $result.Text); " +
+
                 "    } else { " +
+
                 "      Write-Output '__RESULT__'; " +
+
                 "    } " +
 
                 "  } catch { " +
 
                 "    Write-Output " +
-                "      ('__ERROR__' + $_.Exception.Message); " +
+                "    ('__ERROR__' + $_.Exception.Message); " +
 
                 "  } " +
 
                 "} " +
 
                 "$r.Dispose();";
-
 
         recognizerProcess =
                 new ProcessBuilder(
@@ -103,14 +164,12 @@ public class SpeechToText {
                 .redirectErrorStream(true)
                 .start();
 
-
         recognizerInput =
                 new BufferedWriter(
                         new OutputStreamWriter(
                                 recognizerProcess.getOutputStream()
                         )
                 );
-
 
         recognizerOutput =
                 new BufferedReader(
@@ -119,7 +178,6 @@ public class SpeechToText {
                         )
                 );
 
-
         String line;
 
         while ((line = recognizerOutput.readLine()) != null) {
@@ -127,7 +185,7 @@ public class SpeechToText {
             if (line.equals("__READY__")) {
 
                 System.out.println(
-                        "NOURI: Windows speech recognition ready."
+                        "NOURI: Windows command recognition ready."
                 );
 
                 return;
@@ -146,7 +204,6 @@ public class SpeechToText {
         );
     }
 
-
     public static String transcribe(Path audioFile) {
 
         if (audioFile == null) {
@@ -164,16 +221,13 @@ public class SpeechToText {
                                 .toAbsolutePath()
                                 .toString();
 
-
                 System.out.println(
-                        "NOURI: Recognizing speech..."
+                        "NOURI: Recognizing command..."
                 );
-
 
                 recognizerInput.write(path);
                 recognizerInput.newLine();
                 recognizerInput.flush();
-
 
                 String line;
 
@@ -187,7 +241,6 @@ public class SpeechToText {
                                         "__RESULT__".length()
                                 ).trim();
 
-
                         if (!result.isBlank()) {
 
                             System.out.println(
@@ -198,28 +251,27 @@ public class SpeechToText {
                             return result;
                         }
 
+                        System.out.println(
+                                "NOURI: Command not recognized."
+                        );
+
                         return "";
                     }
-
 
                     if (line.startsWith("__ERROR__")) {
 
                         System.out.println(
                                 "NOURI recognition error: "
-                                        + line
-                                                .substring(
-                                                        "__ERROR__"
-                                                                .length()
-                                                )
+                                        + line.substring(
+                                                "__ERROR__".length()
+                                        )
                         );
 
                         return "";
                     }
                 }
 
-
                 restartRecognizer();
-
                 return "";
 
             } catch (Exception e) {
@@ -236,17 +288,13 @@ public class SpeechToText {
         }
     }
 
-
     private static void restartRecognizer() {
 
         try {
 
             if (recognizerInput != null) {
 
-                recognizerInput.write(
-                        "__EXIT__"
-                );
-
+                recognizerInput.write("__EXIT__");
                 recognizerInput.newLine();
                 recognizerInput.flush();
                 recognizerInput.close();
@@ -254,7 +302,6 @@ public class SpeechToText {
 
         } catch (Exception ignored) {
         }
-
 
         try {
 
@@ -265,12 +312,10 @@ public class SpeechToText {
         } catch (Exception ignored) {
         }
 
-
         recognizerProcess = null;
         recognizerInput = null;
         recognizerOutput = null;
     }
-
 
     public static void shutdown() {
 
