@@ -18,34 +18,46 @@ public class NouriVoiceAssistant {
 
             try {
 
-                // =================================
-                // WAITING FOR WAKE CLAPS
-                // =================================
-
+                /*
+                 * WAIT FOR WAKE SIGNAL
+                 */
                 if (!conversationMode) {
 
                     WakeWord.waitForDoubleClap();
 
-                    System.out.println(
-                            "NOURI: Wake signal detected."
-                    );
+                    System.out.println("NOURI: Wake signal detected.");
 
                     conversationMode = true;
 
+                    /*
+                     * GREETING
+                     */
                     Voice.speak(
                             "Greetings. How can I help you, sir?"
                     );
 
-                    continue;
+                    /*
+                     * IMPORTANT:
+                     * Do NOT continue here.
+                     *
+                     * The program will immediately continue
+                     * into the listening section below.
+                     */
                 }
 
-                // =================================
-                // NORMAL CONVERSATION
-                // =================================
+
+                /*
+                 * LISTEN FOR USER COMMAND
+                 */
+                System.out.println("NOURI: Ready for your command.");
 
                 java.io.File audioFile =
                         microphone.recordUntilSilence();
 
+
+                /*
+                 * SPEECH TO TEXT
+                 */
                 String text =
                         SpeechToText.transcribe(
                                 audioFile.toPath()
@@ -53,21 +65,35 @@ public class NouriVoiceAssistant {
 
                 audioFile.delete();
 
+
+                /*
+                 * NOTHING HEARD
+                 */
                 if (text == null || text.isBlank()) {
+
+                    System.out.println(
+                            "NOURI: I didn't catch that, sir."
+                    );
+
                     continue;
                 }
+
 
                 System.out.println(
                         "You: " + text
                 );
 
+
+                /*
+                 * NORMALIZE COMMAND
+                 */
                 String lower =
                         text.toLowerCase().trim();
 
-                // =================================
-                // SLEEP COMMANDS
-                // =================================
 
+                /*
+                 * SLEEP COMMANDS
+                 */
                 if (lower.contains("go to sleep")
                         || lower.contains("sleep now")
                         || lower.contains("stop listening")
@@ -83,36 +109,72 @@ public class NouriVoiceAssistant {
                             "NOURI: Conversation mode OFF."
                     );
 
+                    System.out.println();
+                    System.out.println(
+                            "Clap twice to wake NOURI."
+                    );
+
                     continue;
                 }
 
-                // =================================
-                // PROCESS COMMAND
-                // =================================
 
+                /*
+                 * PROCESS COMMAND
+                 */
                 String response =
                         commands.execute(text);
 
+
+                /*
+                 * NO RESPONSE
+                 */
                 if (response == null
                         || response.isBlank()) {
+
+                    System.out.println(
+                            "NOURI: No response."
+                    );
+
                     continue;
                 }
 
+
+                /*
+                 * SHOW RESPONSE
+                 */
                 System.out.println(
                         "NOURI: " + response
                 );
 
+
+                /*
+                 * PREPARE RESPONSE FOR VOICE
+                 */
                 String voiceResponse =
                         prepareVoiceResponse(response);
+
 
                 System.out.println(
                         "NOURI VOICE: "
                                 + voiceResponse
                 );
 
-                Voice.speak(
-                        voiceResponse
+
+                /*
+                 * SPEAK RESPONSE
+                 */
+                Voice.speak(voiceResponse);
+
+
+                /*
+                 * LOOP BACK TO LISTENING
+                 *
+                 * NOURI remains awake.
+                 */
+                System.out.println(
+                        "NOURI: Ready for your next command."
                 );
+
 
             } catch (Exception e) {
 
@@ -124,16 +186,23 @@ public class NouriVoiceAssistant {
         }
     }
 
+
+    /*
+     * Keep very long AI responses from being
+     * spoken for too long.
+     */
     private static String prepareVoiceResponse(
             String response) {
 
-        response = response
-                .replace("\n", " ")
-                .replace("\r", " ")
-                .replace("*", "")
-                .replace("#", "")
-                .replace("  ", " ")
-                .trim();
+        response =
+                response
+                        .replace("\n", " ")
+                        .replace("\r", " ")
+                        .replace("*", "")
+                        .replace("#", "")
+                        .replace("  ", " ")
+                        .trim();
+
 
         if (response.length()
                 <= MAX_VOICE_CHARACTERS) {
@@ -141,14 +210,17 @@ public class NouriVoiceAssistant {
             return response;
         }
 
+
         int limit =
                 MAX_VOICE_CHARACTERS;
+
 
         int end =
                 response.lastIndexOf(
                         ". ",
                         limit
                 );
+
 
         if (end < 100) {
 
@@ -159,6 +231,7 @@ public class NouriVoiceAssistant {
                     );
         }
 
+
         if (end < 100) {
 
             end = limit;
@@ -168,13 +241,33 @@ public class NouriVoiceAssistant {
             end += 1;
         }
 
-        String shortResponse =
-                response.substring(
-                        0,
-                        end
-                ).trim();
 
-        return shortResponse
+        return response
+                .substring(0, end)
+                .trim()
                 + " I have more details if you want them.";
     }
 }
+```
+
+### Then sync it from GitHub
+
+After you put this file on GitHub:
+
+```bat
+cd C:\Users\dell\Desktop\NOURI
+git fetch origin
+git checkout origin/main -- src\NouriVoiceAssistant.java
+javac -d out src\*.java
+java -cp out NouriVoiceAssistant
+```
+
+The important fix is that after:
+
+**👏👏 → greeting**
+
+NOURI now goes directly to:
+
+**🎤 Listening → speech recognition → command → response → listening again**
+
+It will **stay awake** until you say **“go to sleep”**.
