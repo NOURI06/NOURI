@@ -26,7 +26,6 @@ public CommandResult prepare(String command) {
 
     command = command.toLowerCase().trim();
 
-    // Only handle app-opening requests.
     if (!containsAny(
             command,
             "open",
@@ -36,10 +35,6 @@ public CommandResult prepare(String command) {
 
         return null;
     }
-
-    // =========================
-    // FIND APPLICATION
-    // =========================
 
     for (Map.Entry<String, String> entry :
             apps.entrySet()) {
@@ -99,4 +94,6 @@ private boolean containsAny(
     }
 
     return false;
+}
+
 }
