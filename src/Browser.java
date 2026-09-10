@@ -7,10 +7,6 @@ public CommandResult prepare(String command) {
 
     command = command.toLowerCase().trim();
 
-    // =========================
-    // GOOGLE SEARCH
-    // =========================
-
     if (command.startsWith("search ")) {
 
         String query = command.substring(7).trim();
@@ -28,7 +24,6 @@ public CommandResult prepare(String command) {
         }
     }
 
-    // "google cats"
     if (command.startsWith("google ")) {
 
         String query = command.substring(7).trim();
@@ -46,10 +41,6 @@ public CommandResult prepare(String command) {
         }
     }
 
-    // =========================
-    // YOUTUBE
-    // =========================
-
     if (containsAny(
             command,
             "youtube",
@@ -57,13 +48,11 @@ public CommandResult prepare(String command) {
 
         return new CommandResult(
                 "Opening YouTube.",
-                () -> openUrl("https://www.youtube.com")
+                () -> openUrl(
+                        "https://www.youtube.com"
+                )
         );
     }
-
-    // =========================
-    // GOOGLE
-    // =========================
 
     if (containsAny(
             command,
@@ -73,13 +62,11 @@ public CommandResult prepare(String command) {
 
         return new CommandResult(
                 "Opening Google.",
-                () -> openUrl("https://www.google.com")
+                () -> openUrl(
+                        "https://www.google.com"
+                )
         );
     }
-
-    // =========================
-    // GITHUB
-    // =========================
 
     if (containsAny(
             command,
@@ -88,13 +75,11 @@ public CommandResult prepare(String command) {
 
         return new CommandResult(
                 "Opening GitHub.",
-                () -> openUrl("https://github.com")
+                () -> openUrl(
+                        "https://github.com"
+                )
         );
     }
-
-    // =========================
-    // CHATGPT
-    // =========================
 
     if (containsAny(
             command,
@@ -103,7 +88,9 @@ public CommandResult prepare(String command) {
 
         return new CommandResult(
                 "Opening ChatGPT.",
-                () -> openUrl("https://chatgpt.com")
+                () -> openUrl(
+                        "https://chatgpt.com"
+                )
         );
     }
 
@@ -118,12 +105,6 @@ private void openUrl(String url) {
 
             Desktop.getDesktop().browse(
                     new URI(url)
-            );
-
-        } else {
-
-            System.out.println(
-                    "NOURI: Desktop browsing is not supported."
             );
         }
 
@@ -148,4 +129,6 @@ private boolean containsAny(
     }
 
     return false;
+}
+    
 }
