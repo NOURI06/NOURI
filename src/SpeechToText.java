@@ -13,7 +13,7 @@ public class SpeechToText {
             return;
         }
 
-        Path script = Paths.get("src", "SpeechRecognizer.ps1")
+        Path script = Paths.get("src", "SpeechRecognizer.ps")
                 .toAbsolutePath()
                 .normalize();
 
