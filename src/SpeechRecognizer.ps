@@ -1,0 +1,188 @@
+Add-Type -AssemblyName System.Speech
+
+try {
+
+    $info = [System.Speech.Recognition.SpeechRecognitionEngine]::InstalledRecognizers() |
+        Where-Object { $_.Culture.Name -eq "en-GB" } |
+        Select-Object -First 1
+
+    if ($null -eq $info) {
+        throw "English UK speech recognizer was not found."
+    }
+
+    $recognizer = New-Object System.Speech.Recognition.SpeechRecognitionEngine($info)
+
+    $recognizer.InitialSilenceTimeout = 1
+    $recognizer.BabbleTimeout = 1
+    $recognizer.EndSilenceTimeout = 0.6
+    $recognizer.EndSilenceTimeoutAmbiguous = 0.8
+
+    # -----------------------------
+    # COMMAND GRAMMAR
+    # -----------------------------
+
+    $choices = New-Object System.Speech.Recognition.Choices
+
+    $commands = @(
+        "open calculator",
+        "open calc",
+        "launch calculator",
+        "start calculator",
+
+        "open notepad",
+        "launch notepad",
+        "start notepad",
+
+        "open browser",
+        "launch browser",
+        "start browser",
+
+        "open explorer",
+        "open file explorer",
+        "launch explorer",
+
+        "open nouri",
+        "launch nouri",
+
+        "go to sleep",
+        "sleep now",
+        "stop listening",
+        "goodbye",
+
+        "hello",
+        "hi",
+        "hey",
+        "who are you",
+        "what are you",
+
+        "what time is it",
+        "what is the time",
+        "tell me the time",
+        "time",
+
+        "what is today's date",
+        "what date is it",
+        "tell me today's date",
+        "date"
+    )
+
+    foreach ($command in $commands) {
+        $choices.Add($command)
+    }
+
+    $builder = New-Object System.Speech.Recognition.GrammarBuilder
+    $builder.Culture = $info.Culture
+    $builder.Append($choices)
+
+    $commandGrammar = New-Object System.Speech.Recognition.Grammar($builder)
+    $commandGrammar.Name = "NOURI Commands"
+
+    # -----------------------------
+    # DICTATION GRAMMAR
+    # -----------------------------
+
+    $dictationGrammar = New-Object System.Speech.Recognition.DictationGrammar
+    $dictationGrammar.Name = "NOURI Dictation"
+
+    $recognizer.LoadGrammar($commandGrammar)
+    $recognizer.LoadGrammar($dictationGrammar)
+
+    # Start with commands enabled.
+    $commandGrammar.Enabled = $true
+    $dictationGrammar.Enabled = $false
+
+    Write-Output "__READY__"
+    [Console]::Out.Flush()
+
+    # -----------------------------
+    # MAIN LOOP
+    # -----------------------------
+
+    while ($true) {
+
+        $path = [Console]::In.ReadLine()
+
+        if ($null -eq $path) {
+            break
+        }
+
+        $path = $path.Trim()
+
+        if ($path.Length -eq 0) {
+            continue
+        }
+
+        try {
+
+            if (-not (Test-Path -LiteralPath $path)) {
+                throw "Audio file not found: $path"
+            }
+
+            # -----------------------------
+            # FIRST: COMMAND RECOGNITION
+            # -----------------------------
+
+            $commandGrammar.Enabled = $true
+            $dictationGrammar.Enabled = $false
+
+            $recognizer.SetInputToNull()
+            $recognizer.SetInputToWaveFile($path)
+
+            $result = $recognizer.Recognize()
+
+            # -----------------------------
+            # SECOND: NORMAL SPEECH
+            # -----------------------------
+
+            if ($null -eq $result) {
+
+                $commandGrammar.Enabled = $false
+                $dictationGrammar.Enabled = $true
+
+                $recognizer.SetInputToNull()
+                $recognizer.SetInputToWaveFile($path)
+
+                $result = $recognizer.Recognize()
+            }
+
+            $recognizer.SetInputToNull()
+
+            if ($null -eq $result) {
+
+                Write-Output "__RESULT__|"
+                [Console]::Out.Flush()
+
+                continue
+            }
+
+            $text = $result.Text.Trim()
+
+            if ($text.Length -eq 0) {
+
+                Write-Output "__RESULT__|"
+                [Console]::Out.Flush()
+
+                continue
+            }
+
+            $confidence = [Math]::Round(
+                [double]$result.Confidence,
+                2
+            )
+
+            Write-Output "__RESULT__$text|$confidence"
+            [Console]::Out.Flush()
+        }
+        catch {
+
+            Write-Output "__ERROR__$($_.Exception.Message)"
+            [Console]::Out.Flush()
+        }
+    }
+
+}
+catch {
+
+    Write-Output "__ERROR__$($_.Exception.Message)"
+    [Console]::Out.Flush()
+}
