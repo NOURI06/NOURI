@@ -3,83 +3,100 @@ import java.util.Map;
 
 public class AppLauncher {
 
-    private Map<String, String> apps = new HashMap<>();
+private final Map<String, String> apps =
+        new HashMap<>();
 
-    public AppLauncher() {
+public AppLauncher() {
 
-        // Calculator
-        apps.put("calculator", "calc");
-        apps.put("calc", "calc");
+    apps.put("calculator", "calc");
+    apps.put("calc", "calc");
 
-        // Paint
-        apps.put("paint", "mspaint");
+    apps.put("paint", "mspaint");
 
-        // Notepad
-        apps.put("notepad", "notepad");
+    apps.put("notepad", "notepad");
 
-        // Command Prompt
-        apps.put("command prompt", "cmd");
-        apps.put("cmd", "cmd");
+    apps.put("command prompt", "cmd");
+    apps.put("cmd", "cmd");
 
-        // File Explorer
-        apps.put("explorer", "explorer");
-        apps.put("file explorer", "explorer");
-    }
+    apps.put("explorer", "explorer");
+    apps.put("file explorer", "explorer");
+}
 
-    public String handle(String command) {
+public CommandResult prepare(String command) {
 
-        command = command.toLowerCase().trim();
+    command = command.toLowerCase().trim();
 
-        // We only look for app-opening requests
-        if (!containsAny(
-                command,
-                "open",
-                "launch",
-                "start",
-                "run")) {
-
-            return null;
-        }
-
-        // =========================
-        // FIND APPLICATION
-        // =========================
-
-        for (Map.Entry<String, String> entry : apps.entrySet()) {
-
-            String appName = entry.getKey();
-
-            if (command.contains(appName)) {
-
-                try {
-
-                    Runtime.getRuntime().exec(
-                            entry.getValue()
-                    );
-
-                    return "Opening " + appName + ".";
-
-                } catch (Exception e) {
-
-                    return "I couldn't open " + appName + ".";
-                }
-            }
-        }
+    // Only handle app-opening requests.
+    if (!containsAny(
+            command,
+            "open",
+            "launch",
+            "start",
+            "run")) {
 
         return null;
     }
 
-    private boolean containsAny(
-            String command,
-            String... words) {
+    // =========================
+    // FIND APPLICATION
+    // =========================
 
-        for (String word : words) {
+    for (Map.Entry<String, String> entry :
+            apps.entrySet()) {
 
-            if (command.contains(word)) {
-                return true;
-            }
+        String appName = entry.getKey();
+        String executable = entry.getValue();
+
+        if (command.contains(appName)) {
+
+            return new CommandResult(
+                    "Opening " + appName + ".",
+                    () -> launch(
+                            appName,
+                            executable
+                    )
+            );
         }
-
-        return false;
     }
+
+    return null;
+}
+
+private void launch(
+        String appName,
+        String executable) {
+
+    try {
+
+        Runtime.getRuntime().exec(
+                executable
+        );
+
+        System.out.println(
+                "NOURI: " + appName + " launched."
+        );
+
+    } catch (Exception e) {
+
+        System.out.println(
+                "NOURI: Couldn't open "
+                        + appName
+                        + ": "
+                        + e.getMessage()
+        );
+    }
+}
+
+private boolean containsAny(
+        String command,
+        String... words) {
+
+    for (String word : words) {
+
+        if (command.contains(word)) {
+            return true;
+        }
+    }
+
+    return false;
 }
