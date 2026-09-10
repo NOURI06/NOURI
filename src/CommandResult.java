@@ -17,3 +17,5 @@ public void performAction() {
         action.run();
     }
 }
+
+}
