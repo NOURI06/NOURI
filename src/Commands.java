@@ -1,37 +1,74 @@
 public class Commands {
 
-    private AI ai = new AI();
-    private Browser browser = new Browser();
-    private AppLauncher appLauncher = new AppLauncher();
-    private GeminiAI gemini = new GeminiAI();
+private final AI ai = new AI();
+private final Browser browser = new Browser();
+private final AppLauncher appLauncher = new AppLauncher();
+private final GeminiAI gemini = new GeminiAI();
 
-    public String execute(String command) {
+public CommandResult prepare(String command) {
 
-        command = command.trim();
+    command = command.trim();
 
-        String response = ai.handle(command);
+    // =========================
+    // BASIC AI
+    // =========================
 
-        if (response != null) {
-            return response;
-        }
+    String response = ai.handle(command);
 
-        response = browser.handle(command);
+    if (response != null) {
 
-        if (response != null) {
-            return response;
-        }
-
-        response = appLauncher.handle(command);
-
-        if (response != null) {
-            return response;
-        }
-
-        return gemini.ask(command);
+        return new CommandResult(
+                response,
+                null
+        );
     }
-}
-String pcResponse = PCController.handle(text);
 
-if (pcResponse != null) {
-    return pcResponse;
+    // =========================
+    // BROWSER
+    // =========================
+
+    CommandResult browserResult =
+            browser.prepare(command);
+
+    if (browserResult != null) {
+        return browserResult;
+    }
+
+    // =========================
+    // APPLICATIONS
+    // =========================
+
+    CommandResult appResult =
+            appLauncher.prepare(command);
+
+    if (appResult != null) {
+        return appResult;
+    }
+
+    // =========================
+    // GEMINI
+    // =========================
+
+    response = gemini.ask(command);
+
+    return new CommandResult(
+            response,
+            null
+    );
+}
+
+/*
+ * Compatibility method.
+ *
+ * This still works for other parts
+ * of NOURI that may call execute().
+ */
+public String execute(String command) {
+
+    CommandResult result =
+            prepare(command);
+
+    result.performAction();
+
+    return result.getResponse();
 }
