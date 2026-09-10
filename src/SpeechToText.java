@@ -25,23 +25,13 @@ public class SpeechToText {
 
                 "Add-Type -AssemblyName System.Speech; " +
 
-                "$recognizers = " +
-                "[System.Speech.Recognition.SpeechRecognitionEngine]" +
-                "::InstalledRecognizers(); " +
-
-                "$info = $recognizers | " +
+                "$info = [System.Speech.Recognition.SpeechRecognitionEngine]" +
+                "::InstalledRecognizers() | " +
                 "Where-Object { $_.Culture.Name -eq 'en-GB' } | " +
                 "Select-Object -First 1; " +
 
                 "if (-not $info) { " +
-                "  $info = $recognizers | " +
-                "  Select-Object -First 1; " +
-                "} " +
-
-                "if (-not $info) { " +
-                "  Write-Output '__ERROR__No speech recognizer found'; " +
-                "  exit 1; " +
-                "} " +
+                "Write-Output '__ERROR__No en-GB recognizer'; exit 1; } " +
 
                 "$r = New-Object " +
                 "System.Speech.Recognition.SpeechRecognitionEngine($info); " +
@@ -49,57 +39,45 @@ public class SpeechToText {
                 "$choices = New-Object " +
                 "System.Speech.Recognition.Choices; " +
 
-                "$choices.Add([string[]]@(" +
-
+                "$phrases = @(" +
                 "'open calculator'," +
                 "'open calc'," +
                 "'launch calculator'," +
-
                 "'open notepad'," +
                 "'launch notepad'," +
-
                 "'open browser'," +
                 "'open chrome'," +
                 "'launch browser'," +
-
-                "'open file explorer'," +
                 "'open explorer'," +
-
+                "'open file explorer'," +
                 "'open nouri'," +
-
                 "'go to sleep'," +
                 "'sleep now'," +
                 "'stop listening'," +
                 "'goodbye'," +
-
                 "'hello'," +
                 "'hi'," +
                 "'hey'," +
-
                 "'who are you'," +
                 "'what are you'," +
-
                 "'what time is it'," +
                 "'what is the time'," +
                 "'time'," +
-
-                "'what is today's date'," +
-                "'what's today's date'," +
+                "'what is today s date'," +
                 "'what date is it'," +
                 "'date'" +
+                "); " +
 
-                ")); " +
+                "foreach ($phrase in $phrases) { " +
+                "$choices.Add($phrase); } " +
 
-                "$gb = New-Object " +
+                "$builder = New-Object " +
                 "System.Speech.Recognition.GrammarBuilder; " +
 
-                "$gb.Culture = $info.Culture; " +
-                "$gb.Append($choices); " +
+                "$builder.Append($choices); " +
 
                 "$grammar = New-Object " +
-                "System.Speech.Recognition.Grammar($gb); " +
-
-                "$grammar.Name = 'NOURICommands'; " +
+                "System.Speech.Recognition.Grammar($builder); " +
 
                 "$r.LoadGrammar($grammar); " +
 
@@ -119,34 +97,25 @@ public class SpeechToText {
 
                 "while ($true) { " +
 
-                "  $path = [Console]::ReadLine(); " +
+                "$path = [Console]::ReadLine(); " +
 
-                "  if ($null -eq $path -or " +
-                "      $path -eq '__EXIT__') { break; } " +
+                "if ($null -eq $path -or $path -eq '__EXIT__') { break; } " +
 
-                "  try { " +
+                "try { " +
 
-                "    $r.SetInputToWaveFile($path); " +
+                "$r.SetInputToWaveFile($path); " +
 
-                "    $result = $r.Recognize(); " +
+                "$result = $r.Recognize(); " +
 
-                "    if ($result -and $result.Confidence -ge 0.45) { " +
+                "if ($result) { " +
+                "Write-Output ('__RESULT__' + $result.Text); " +
+                "} else { " +
+                "Write-Output '__RESULT__'; " +
+                "} " +
 
-                "      Write-Output " +
-                "      ('__RESULT__' + $result.Text); " +
-
-                "    } else { " +
-
-                "      Write-Output '__RESULT__'; " +
-
-                "    } " +
-
-                "  } catch { " +
-
-                "    Write-Output " +
-                "    ('__ERROR__' + $_.Exception.Message); " +
-
-                "  } " +
+                "} catch { " +
+                "Write-Output ('__ERROR__' + $_.Exception.Message); " +
+                "} " +
 
                 "} " +
 
@@ -250,10 +219,6 @@ public class SpeechToText {
 
                             return result;
                         }
-
-                        System.out.println(
-                                "NOURI: Command not recognized."
-                        );
 
                         return "";
                     }
