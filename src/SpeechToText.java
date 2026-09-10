@@ -31,41 +31,64 @@ public class SpeechToText {
                 "Select-Object -First 1; " +
 
                 "if (-not $info) { " +
-                "Write-Output '__ERROR__No en-GB recognizer'; exit 1; } " +
+                "Write-Output '__ERROR__No en-GB recognizer'; " +
+                "exit 1; } " +
 
                 "$r = New-Object " +
                 "System.Speech.Recognition.SpeechRecognitionEngine($info); " +
+
+                "# ----------------------------- " +
+                "# COMMAND GRAMMAR " +
+                "# ----------------------------- " +
 
                 "$choices = New-Object " +
                 "System.Speech.Recognition.Choices; " +
 
                 "$phrases = @(" +
+
                 "'open calculator'," +
                 "'open calc'," +
                 "'launch calculator'," +
+                "'start calculator'," +
+
                 "'open notepad'," +
                 "'launch notepad'," +
+                "'start notepad'," +
+
                 "'open browser'," +
                 "'open chrome'," +
                 "'launch browser'," +
+                "'start browser'," +
+
                 "'open explorer'," +
                 "'open file explorer'," +
+                "'launch explorer'," +
+
                 "'open nouri'," +
+                "'launch nouri'," +
+
                 "'go to sleep'," +
                 "'sleep now'," +
                 "'stop listening'," +
                 "'goodbye'," +
+
                 "'hello'," +
                 "'hi'," +
                 "'hey'," +
+
                 "'who are you'," +
                 "'what are you'," +
+
                 "'what time is it'," +
                 "'what is the time'," +
+                "'tell me the time'," +
                 "'time'," +
-                "'what is today s date'," +
+
+                "'what is today's date'," +
                 "'what date is it'," +
+                "'tell me today's date'," +
                 "'date'" +
+
                 "); " +
 
                 "foreach ($phrase in $phrases) { " +
@@ -74,12 +97,30 @@ public class SpeechToText {
                 "$builder = New-Object " +
                 "System.Speech.Recognition.GrammarBuilder; " +
 
+                "$builder.Culture = $info.Culture; " +
                 "$builder.Append($choices); " +
 
-                "$grammar = New-Object " +
+                "$commandGrammar = New-Object " +
                 "System.Speech.Recognition.Grammar($builder); " +
 
-                "$r.LoadGrammar($grammar); " +
+                "$commandGrammar.Name = 'NOURI Commands'; " +
+
+                "$r.LoadGrammar($commandGrammar); " +
+
+                "# ----------------------------- " +
+                "# DICTATION GRAMMAR " +
+                "# ----------------------------- " +
+
+                "$dictation = New-Object " +
+                "System.Speech.Recognition.DictationGrammar; " +
+
+                "$dictation.Name = 'NOURI Dictation'; " +
+
+                "$r.LoadGrammar($dictation); " +
+
+                "# ----------------------------- " +
+                "# RECOGNITION SETTINGS " +
+                "# ----------------------------- " +
 
                 "$r.InitialSilenceTimeout = " +
                 "[TimeSpan]::FromMilliseconds(1500); " +
@@ -95,11 +136,16 @@ public class SpeechToText {
 
                 "Write-Output '__READY__'; " +
 
+                "# ----------------------------- " +
+                "# MAIN LOOP " +
+                "# ----------------------------- " +
+
                 "while ($true) { " +
 
                 "$path = [Console]::ReadLine(); " +
 
-                "if ($null -eq $path -or $path -eq '__EXIT__') { break; } " +
+                "if ($null -eq $path -or " +
+                "$path -eq '__EXIT__') { break; } " +
 
                 "try { " +
 
@@ -108,13 +154,25 @@ public class SpeechToText {
                 "$result = $r.Recognize(); " +
 
                 "if ($result) { " +
-                "Write-Output ('__RESULT__' + $result.Text); " +
+
+                "$text = $result.Text; " +
+
+                "$confidence = $result.Confidence; " +
+
+                "Write-Output " +
+                "('__RESULT__' + $text + '|' + $confidence); " +
+
                 "} else { " +
+
                 "Write-Output '__RESULT__'; " +
+
                 "} " +
 
                 "} catch { " +
-                "Write-Output ('__ERROR__' + $_.Exception.Message); " +
+
+                "Write-Output " +
+                "('__ERROR__' + $_.Exception.Message); " +
+
                 "} " +
 
                 "} " +
@@ -154,7 +212,7 @@ public class SpeechToText {
             if (line.equals("__READY__")) {
 
                 System.out.println(
-                        "NOURI: Windows command recognition ready."
+                        "NOURI: Windows speech recognition ready."
                 );
 
                 return;
@@ -191,7 +249,7 @@ public class SpeechToText {
                                 .toString();
 
                 System.out.println(
-                        "NOURI: Recognizing command..."
+                        "NOURI: Recognizing speech..."
                 );
 
                 recognizerInput.write(path);
@@ -210,17 +268,44 @@ public class SpeechToText {
                                         "__RESULT__".length()
                                 ).trim();
 
-                        if (!result.isBlank()) {
-
-                            System.out.println(
-                                    "NOURI heard: "
-                                            + result
-                            );
-
-                            return result;
+                        if (result.isBlank()) {
+                            return "";
                         }
 
-                        return "";
+                        int separator =
+                                result.lastIndexOf("|");
+
+                        String text = result;
+
+                        String confidence = "";
+
+                        if (separator > 0) {
+
+                            text =
+                                    result.substring(
+                                            0,
+                                            separator
+                                    ).trim();
+
+                            confidence =
+                                    result.substring(
+                                            separator + 1
+                                    ).trim();
+                        }
+
+                        System.out.println(
+                                "NOURI heard: " + text
+                        );
+
+                        if (!confidence.isBlank()) {
+
+                            System.out.println(
+                                    "NOURI confidence: "
+                                            + confidence
+                            );
+                        }
+
+                        return text;
                     }
 
                     if (line.startsWith("__ERROR__")) {
@@ -237,6 +322,7 @@ public class SpeechToText {
                 }
 
                 restartRecognizer();
+
                 return "";
 
             } catch (Exception e) {
