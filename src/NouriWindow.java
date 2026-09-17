@@ -5,271 +5,363 @@ import java.io.File;
 
 public class NouriWindow {
 
-    private JFrame frame;
-    private JPanel chatPanel;
-    private JScrollPane scrollPane;
-    private JTextField inputField;
-    private JButton sendButton;
-    private JLabel statusLabel;
-    private JLabel clockLabel;
+private JFrame frame;
+private JPanel chatPanel;
+private JScrollPane scrollPane;
+private JTextField inputField;
+private JButton sendButton;
+private JLabel statusLabel;
+private JLabel clockLabel;
 
-    private final Commands commands = new Commands();
-    private final Microphone microphone = new Microphone();
+private final Commands commands = new Commands();
+private final Microphone microphone = new Microphone();
 
-    private volatile boolean voiceRunning = true;
-    private volatile boolean conversationMode = false;
+private volatile boolean voiceRunning = true;
+private volatile boolean conversationMode = false;
 
-    public NouriWindow() {
+public NouriWindow() {
 
-        frame = new JFrame("NOURI // AI SYSTEM");
-        frame.setSize(1100, 720);
-        frame.setMinimumSize(new Dimension(900, 600));
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLocationRelativeTo(null);
+    frame = new JFrame("NOURI // AI SYSTEM");
+    frame.setSize(1100, 720);
+    frame.setMinimumSize(new Dimension(900, 600));
+    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    frame.setLocationRelativeTo(null);
 
-        JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(new Color(5, 10, 18));
+    JPanel root = new JPanel(new BorderLayout());
+    root.setBackground(new Color(5, 10, 18));
 
-        // =========================
-        // TOP HUD
-        // =========================
+    // =========================
+    // TOP HUD
+    // =========================
 
-        JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(new Color(7, 15, 25));
-        top.setBorder(new EmptyBorder(15, 25, 15, 25));
+    JPanel top = new JPanel(new BorderLayout());
+    top.setBackground(new Color(7, 15, 25));
+    top.setBorder(new EmptyBorder(15, 25, 15, 25));
 
-        JLabel title = new JLabel("N O U R I");
-        title.setForeground(new Color(0, 220, 255));
-        title.setFont(new Font("Segoe UI", Font.BOLD, 25));
+    JLabel title = new JLabel("N O U R I");
+    title.setForeground(new Color(0, 220, 255));
+    title.setFont(new Font("Segoe UI", Font.BOLD, 25));
 
-        JPanel systemPanel =
-                new JPanel(new FlowLayout(
-                        FlowLayout.RIGHT, 20, 0));
+    JPanel systemPanel =
+            new JPanel(
+                    new FlowLayout(
+                            FlowLayout.RIGHT,
+                            20,
+                            0
+                    )
+            );
 
-        systemPanel.setOpaque(false);
+    systemPanel.setOpaque(false);
 
-        statusLabel = new JLabel("SYSTEM ONLINE");
-        statusLabel.setForeground(new Color(0, 255, 170));
-        statusLabel.setFont(
-                new Font("Segoe UI", Font.BOLD, 13));
+    statusLabel = new JLabel("SYSTEM ONLINE");
+    statusLabel.setForeground(new Color(0, 255, 170));
+    statusLabel.setFont(
+            new Font("Segoe UI", Font.BOLD, 13)
+    );
 
-        clockLabel = new JLabel();
-        clockLabel.setForeground(
-                new Color(100, 180, 210));
-        clockLabel.setFont(
-                new Font("Consolas", Font.PLAIN, 13));
+    clockLabel = new JLabel();
+    clockLabel.setForeground(
+            new Color(100, 180, 210)
+    );
+    clockLabel.setFont(
+            new Font("Consolas", Font.PLAIN, 13)
+    );
 
-        systemPanel.add(statusLabel);
-        systemPanel.add(clockLabel);
+    systemPanel.add(statusLabel);
+    systemPanel.add(clockLabel);
 
-        top.add(title, BorderLayout.WEST);
-        top.add(systemPanel, BorderLayout.EAST);
+    top.add(title, BorderLayout.WEST);
+    top.add(systemPanel, BorderLayout.EAST);
 
-        // =========================
-        // CENTER
-        // =========================
+    // =========================
+    // CENTER
+    // =========================
 
-        JPanel center = new JPanel(new BorderLayout());
-        center.setBackground(new Color(5, 10, 18));
+    JPanel center =
+            new JPanel(new BorderLayout());
 
-        AICorePanel core = new AICorePanel();
-        core.setPreferredSize(new Dimension(420, 350));
+    center.setBackground(
+            new Color(5, 10, 18)
+    );
 
-        JPanel coreContainer =
-                new JPanel(new GridBagLayout());
+    AICorePanel core = new AICorePanel();
+    core.setPreferredSize(
+            new Dimension(420, 350)
+    );
 
-        coreContainer.setBackground(
-                new Color(5, 10, 18));
+    JPanel coreContainer =
+            new JPanel(new GridBagLayout());
 
-        coreContainer.add(core);
+    coreContainer.setBackground(
+            new Color(5, 10, 18)
+    );
 
-        center.add(
-                coreContainer,
-                BorderLayout.NORTH);
+    coreContainer.add(core);
 
-        // =========================
-        // CHAT
-        // =========================
+    center.add(
+            coreContainer,
+            BorderLayout.NORTH
+    );
 
-        chatPanel = new JPanel();
+    // =========================
+    // CHAT
+    // =========================
 
-        chatPanel.setLayout(
-                new BoxLayout(
-                        chatPanel,
-                        BoxLayout.Y_AXIS));
+    chatPanel = new JPanel();
 
-        chatPanel.setBackground(
-                new Color(5, 10, 18));
+    chatPanel.setLayout(
+            new BoxLayout(
+                    chatPanel,
+                    BoxLayout.Y_AXIS
+            )
+    );
 
-        chatPanel.setBorder(
-                new EmptyBorder(5, 30, 10, 30));
+    chatPanel.setBackground(
+            new Color(5, 10, 18)
+    );
 
-        scrollPane = new JScrollPane(chatPanel);
-        scrollPane.setBorder(null);
+    chatPanel.setBorder(
+            new EmptyBorder(
+                    5,
+                    30,
+                    10,
+                    30
+            )
+    );
 
-        scrollPane.getViewport()
-                .setBackground(
-                        new Color(5, 10, 18));
+    scrollPane = new JScrollPane(chatPanel);
+    scrollPane.setBorder(null);
 
-        center.add(
-                scrollPane,
-                BorderLayout.CENTER);
+    scrollPane.getViewport()
+            .setBackground(
+                    new Color(5, 10, 18)
+            );
 
-        // =========================
-        // BOTTOM BAR
-        // =========================
+    center.add(
+            scrollPane,
+            BorderLayout.CENTER
+    );
 
-        JPanel bottom =
-                new JPanel(new BorderLayout(12, 0));
+    // =========================
+    // BOTTOM BAR
+    // =========================
 
-        bottom.setBackground(
-                new Color(7, 15, 25));
+    JPanel bottom =
+            new JPanel(
+                    new BorderLayout(12, 0)
+            );
 
-        bottom.setBorder(
-                new EmptyBorder(
-                        15, 20, 15, 20));
+    bottom.setBackground(
+            new Color(7, 15, 25)
+    );
 
-        inputField = new JTextField();
+    bottom.setBorder(
+            new EmptyBorder(
+                    15,
+                    20,
+                    15,
+                    20
+            )
+    );
 
-        inputField.setBackground(
-                new Color(10, 22, 34));
+    inputField = new JTextField();
 
-        inputField.setForeground(Color.WHITE);
+    inputField.setBackground(
+            new Color(10, 22, 34)
+    );
 
-        inputField.setCaretColor(
-                new Color(0, 230, 255));
+    inputField.setForeground(Color.WHITE);
 
-        inputField.setFont(
-                new Font(
-                        "Consolas",
-                        Font.PLAIN,
-                        15));
+    inputField.setCaretColor(
+            new Color(0, 230, 255)
+    );
 
-        inputField.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(
-                                new Color(0, 150, 210),
-                                1),
-                        new EmptyBorder(
-                                12, 15, 12, 15)));
+    inputField.setFont(
+            new Font(
+                    "Consolas",
+                    Font.PLAIN,
+                    15
+            )
+    );
 
-        sendButton = new JButton("EXECUTE");
+    inputField.setBorder(
+            BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(
+                            new Color(0, 150, 210),
+                            1
+                    ),
+                    new EmptyBorder(
+                            12,
+                            15,
+                            12,
+                            15
+                    )
+            )
+    );
 
-        sendButton.setBackground(
-                new Color(0, 100, 150));
+    sendButton = new JButton("EXECUTE");
 
-        sendButton.setForeground(Color.WHITE);
+    sendButton.setBackground(
+            new Color(0, 100, 150)
+    );
 
-        sendButton.setFont(
-                new Font(
-                        "Segoe UI",
-                        Font.BOLD,
-                        13));
+    sendButton.setForeground(Color.WHITE);
 
-        sendButton.setFocusPainted(false);
+    sendButton.setFont(
+            new Font(
+                    "Segoe UI",
+                    Font.BOLD,
+                    13
+            )
+    );
 
-        sendButton.setBorder(
-                BorderFactory.createEmptyBorder(
-                        12, 22, 12, 22));
+    sendButton.setFocusPainted(false);
 
-        bottom.add(
-                inputField,
-                BorderLayout.CENTER);
+    sendButton.setBorder(
+            BorderFactory.createEmptyBorder(
+                    12,
+                    22,
+                    12,
+                    22
+            )
+    );
 
-        bottom.add(
-                sendButton,
-                BorderLayout.EAST);
+    bottom.add(
+            inputField,
+            BorderLayout.CENTER
+    );
 
-        root.add(top, BorderLayout.NORTH);
-        root.add(center, BorderLayout.CENTER);
-        root.add(bottom, BorderLayout.SOUTH);
+    bottom.add(
+            sendButton,
+            BorderLayout.EAST
+    );
 
-        frame.setContentPane(root);
+    root.add(top, BorderLayout.NORTH);
+    root.add(center, BorderLayout.CENTER);
+    root.add(bottom, BorderLayout.SOUTH);
 
-        // =========================
-        // WELCOME
-        // =========================
+    frame.setContentPane(root);
 
-        addMessage(
-                "NOURI",
-                "SYSTEM INITIALIZED.<br>" +
-                "VOICE SYSTEM ONLINE.<br>" +
-                "SAY <b>WAKE UP, BUDDY</b>.",
-                false);
+    // =========================
+    // WELCOME
+    // =========================
 
-        // =========================
-        // BUTTON EVENTS
-        // =========================
+    addMessage(
+            "NOURI",
+            "SYSTEM INITIALIZED.<br>" +
+            "VOICE SYSTEM ONLINE.<br>" +
+            "DOUBLE CLAP TO WAKE.",
+            false
+    );
 
-        sendButton.addActionListener(
-                e -> send());
+    // =========================
+    // BUTTON EVENTS
+    // =========================
 
-        inputField.addActionListener(
-                e -> send());
+    sendButton.addActionListener(
+            e -> send()
+    );
 
-        // =========================
-        // CLOCK
-        // =========================
+    inputField.addActionListener(
+            e -> send()
+    );
 
-        Timer timer =
-                new Timer(
-                        1000,
-                        e -> updateClock());
+    // =========================
+    // CLOCK
+    // =========================
 
-        timer.start();
+    Timer timer =
+            new Timer(
+                    1000,
+                    e -> updateClock()
+            );
 
-        updateClock();
+    timer.start();
 
-        frame.setVisible(true);
+    updateClock();
 
-        inputField.requestFocus();
+    frame.setVisible(true);
 
-        // =========================
-        // START VOICE SYSTEM
-        // =========================
+    inputField.requestFocus();
 
-        startVoiceSystem();
+    // =========================
+    // START VOICE SYSTEM
+    // =========================
+
+    startVoiceSystem();
+}
+
+// =====================================================
+// TEXT COMMAND
+// =====================================================
+
+private void send() {
+
+    String text =
+            inputField.getText().trim();
+
+    if (text.isEmpty()) {
+        return;
     }
 
-    // =====================================================
-    // TEXT COMMAND
-    // =====================================================
+    addMessage(
+            "YOU",
+            text,
+            true
+    );
 
-    private void send() {
+    inputField.setText("");
 
-        String text =
-                inputField.getText().trim();
+    sendButton.setEnabled(false);
 
-        if (text.isEmpty()) {
-            return;
-        }
+    setStatus(
+            "THINKING...",
+            new Color(0, 200, 255)
+    );
 
-        addMessage(
-                "YOU",
-                text,
-                true);
+    new Thread(() -> {
 
-        inputField.setText("");
+        try {
 
-        sendButton.setEnabled(false);
-
-        setStatus(
-                "THINKING...",
-                new Color(0, 200, 255));
-
-        new Thread(() -> {
+            CommandResult result =
+                    commands.prepare(text);
 
             String reply =
-                    commands.execute(text);
+                    result.getResponse();
+
+            addMessage(
+                    "NOURI",
+                    reply,
+                    false
+            );
+
+            // =========================
+            // SPEAK FIRST
+            // =========================
+
+            setStatus(
+                    "SPEAKING...",
+                    new Color(180, 100, 255)
+            );
+
+            Voice.speak(reply);
+
+            // =========================
+            // ACTION SECOND
+            // =========================
+
+            result.performAction();
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "NOURI TEXT ERROR: "
+                            + e.getMessage()
+            );
+
+        } finally {
 
             SwingUtilities.invokeLater(() -> {
-
-                addMessage(
-                        "NOURI",
-                        reply,
-                        false);
-
-                Voice.speak(reply);
 
                 sendButton.setEnabled(true);
 
@@ -277,304 +369,342 @@ public class NouriWindow {
                         conversationMode
                                 ? "LISTENING..."
                                 : "STANDBY",
-                        new Color(0, 255, 170));
+                        new Color(0, 255, 170)
+                );
 
                 inputField.requestFocus();
             });
+        }
 
-        }).start();
-    }
+    }).start();
+}
 
-    // =====================================================
-    // VOICE SYSTEM
-    // =====================================================
+// =====================================================
+// VOICE SYSTEM
+// =====================================================
 
-    private void startVoiceSystem() {
+private void startVoiceSystem() {
 
-        Thread voiceThread =
-                new Thread(() -> {
+    Thread voiceThread =
+            new Thread(() -> {
 
-                    while (voiceRunning) {
+                while (voiceRunning) {
 
-                        try {
+                    try {
 
-                            // =================================
-                            // STANDBY / WAKE WORD MODE
-                            // =================================
+                        // =================================
+                        // STANDBY / DOUBLE CLAP MODE
+                        // =================================
 
-                            if (!conversationMode) {
-
-                                setStatus(
-                                        "STANDBY — SAY WAKE UP, BUDDY",
-                                        new Color(0, 255, 170));
-
-                                File audioFile =
-                                        microphone.recordUntilSilence();
-
-                                String heard =
-                                        SpeechToText.transcribe(
-                                                audioFile.toPath());
-
-                                audioFile.delete();
-
-                                if (heard == null ||
-                                        heard.isBlank()) {
-                                    continue;
-                                }
-
-                                System.out.println(
-                                        "NOURI HEARD: " + heard);
-
-                                addMessage(
-                                        "YOU",
-                                        heard,
-                                        true);
-
-                                if (!WakeWord.isWakeWord(heard)) {
-                                    continue;
-                                }
-
-                                // =================================
-                                // WAKE UP
-                                // =================================
-
-                                conversationMode = true;
-
-                                setStatus(
-                                        "AWAKE",
-                                        new Color(0, 255, 170));
-
-                                String greeting =
-                                        "Greetings. How can I help you, sir?";
-
-                                addMessage(
-                                        "NOURI",
-                                        greeting,
-                                        false);
-
-                                Voice.speak(greeting);
-
-                                continue;
-                            }
-
-                            // =================================
-                            // CONVERSATION MODE
-                            // =================================
+                        if (!conversationMode) {
 
                             setStatus(
-                                    "LISTENING...",
-                                    new Color(0, 255, 170));
-
-                            File commandAudio =
-                                    microphone.recordUntilSilence();
-
-                            String command =
-                                    SpeechToText.transcribe(
-                                            commandAudio.toPath());
-
-                            commandAudio.delete();
-
-                            if (command == null ||
-                                    command.isBlank()) {
-                                continue;
-                            }
+                                    "STANDBY — DOUBLE CLAP TO WAKE",
+                                    new Color(0, 255, 170)
+                            );
 
                             System.out.println(
-                                    "COMMAND: " + command);
+                                    "NOURI: Waiting for double clap..."
+                            );
 
-                            addMessage(
-                                    "YOU",
-                                    command,
-                                    true);
+                            boolean awakened =
+                                    WakeWord.waitForDoubleClap();
 
-                            String lower =
-                                    command
-                                            .toLowerCase()
-                                            .trim();
-
-                            // =================================
-                            // SLEEP
-                            // =================================
-
-                            if (lower.contains("go to sleep")
-                                    || lower.contains("sleep now")
-                                    || lower.contains("stop listening")
-                                    || lower.equals("goodbye")) {
-
-                                conversationMode = false;
-
-                                setStatus(
-                                        "STANDBY",
-                                        new Color(0, 255, 170));
-
-                                String sleepMessage =
-                                        "Of course, sir. Going to sleep.";
-
-                                addMessage(
-                                        "NOURI",
-                                        sleepMessage,
-                                        false);
-
-                                Voice.speak(sleepMessage);
-
+                            if (!awakened) {
                                 continue;
                             }
 
                             // =================================
-                            // EXECUTE COMMAND
+                            // WAKE UP
                             // =================================
+
+                            conversationMode = true;
 
                             setStatus(
-                                    "THINKING...",
-                                    new Color(0, 200, 255));
+                                    "AWAKE",
+                                    new Color(0, 255, 170)
+                            );
 
-                            String response =
-                                    commands.execute(command);
-
-                            System.out.println(
-                                    "NOURI: " + response);
+                            String greeting =
+                                    "Greetings. How can I help you, sir?";
 
                             addMessage(
                                     "NOURI",
-                                    response,
-                                    false);
+                                    greeting,
+                                    false
+                            );
 
-                            // =================================
-                            // SPEAK
-                            // =================================
+                            Voice.speak(greeting);
+
+                            continue;
+                        }
+
+                        // =================================
+                        // CONVERSATION MODE
+                        // =================================
+
+                        setStatus(
+                                "LISTENING...",
+                                new Color(0, 255, 170)
+                        );
+
+                        File commandAudio =
+                                microphone.recordUntilSilence();
+
+                        String command =
+                                SpeechToText.transcribe(
+                                        commandAudio.toPath()
+                                );
+
+                        commandAudio.delete();
+
+                        if (command == null ||
+                                command.isBlank()) {
+
+                            continue;
+                        }
+
+                        System.out.println(
+                                "COMMAND: "
+                                        + command
+                        );
+
+                        addMessage(
+                                "YOU",
+                                command,
+                                true
+                        );
+
+                        String lower =
+                                command
+                                        .toLowerCase()
+                                        .trim();
+
+                        // =================================
+                        // SLEEP
+                        // =================================
+
+                        if (lower.contains("go to sleep")
+                                || lower.contains("sleep now")
+                                || lower.contains("stop listening")
+                                || lower.equals("goodbye")) {
+
+                            conversationMode = false;
 
                             setStatus(
-                                    "SPEAKING...",
-                                    new Color(180, 100, 255));
+                                    "STANDBY",
+                                    new Color(0, 255, 170)
+                            );
 
-                            Voice.speak(response);
+                            String sleepMessage =
+                                    "Of course, sir. Going to sleep.";
 
-                            // conversationMode stays TRUE.
-                            // NOURI will listen again.
+                            addMessage(
+                                    "NOURI",
+                                    sleepMessage,
+                                    false
+                            );
 
-                        } catch (Exception e) {
+                            Voice.speak(sleepMessage);
 
-                            System.out.println(
-                                    "NOURI VOICE ERROR: "
-                                    + e.getMessage());
+                            continue;
+                        }
 
-                            setStatus(
-                                    "VOICE ERROR",
-                                    Color.RED);
+                        // =================================
+                        // PREPARE COMMAND
+                        // =================================
 
-                            try {
-                                Thread.sleep(1000);
-                            } catch (InterruptedException ignored) {
-                            }
+                        setStatus(
+                                "THINKING...",
+                                new Color(0, 200, 255)
+                        );
+
+                        CommandResult result =
+                                commands.prepare(command);
+
+                        String response =
+                                result.getResponse();
+
+                        System.out.println(
+                                "NOURI: "
+                                        + response
+                        );
+
+                        addMessage(
+                                "NOURI",
+                                response,
+                                false
+                        );
+
+                        // =================================
+                        // SPEAK FIRST
+                        // =================================
+
+                        setStatus(
+                                "SPEAKING...",
+                                new Color(180, 100, 255)
+                        );
+
+                        Voice.speak(response);
+
+                        // =================================
+                        // ACTION SECOND
+                        // =================================
+
+                        result.performAction();
+
+                        // conversationMode remains TRUE.
+                        // NOURI listens again.
+
+                    } catch (Exception e) {
+
+                        System.out.println(
+                                "NOURI VOICE ERROR: "
+                                        + e.getMessage()
+                        );
+
+                        setStatus(
+                                "VOICE ERROR",
+                                Color.RED
+                        );
+
+                        try {
+
+                            Thread.sleep(1000);
+
+                        } catch (InterruptedException ignored) {
                         }
                     }
+                }
 
-                });
+            });
 
-        voiceThread.setDaemon(true);
-        voiceThread.start();
-    }
+    voiceThread.setDaemon(true);
+    voiceThread.start();
+}
 
-    // =====================================================
-    // STATUS
-    // =====================================================
+// =====================================================
+// STATUS
+// =====================================================
 
-    private void setStatus(
-            String text,
-            Color color) {
+private void setStatus(
+        String text,
+        Color color) {
 
-        SwingUtilities.invokeLater(() -> {
+    SwingUtilities.invokeLater(() -> {
 
-            statusLabel.setText(text);
-            statusLabel.setForeground(color);
+        statusLabel.setText(text);
+        statusLabel.setForeground(color);
 
-        });
-    }
+    });
+}
 
-    // =====================================================
-    // CHAT
-    // =====================================================
+// =====================================================
+// CHAT
+// =====================================================
 
-    private void addMessage(
-            String sender,
-            String message,
-            boolean user) {
+private void addMessage(
+        String sender,
+        String message,
+        boolean user) {
 
-        SwingUtilities.invokeLater(() -> {
+    SwingUtilities.invokeLater(() -> {
 
-            JPanel wrapper =
-                    new JPanel(
-                            new BorderLayout());
+        JPanel wrapper =
+                new JPanel(
+                        new BorderLayout()
+                );
 
-            wrapper.setOpaque(false);
+        wrapper.setOpaque(false);
 
-            JLabel label =
-                    new JLabel(
-                            "<html><b>"
-                                    + sender
-                                    + "</b><br>"
-                                    + message
-                                    + "</html>");
+        JLabel label =
+                new JLabel(
+                        "<html><b>"
+                                + sender
+                                + "</b><br>"
+                                + message
+                                + "</html>"
+                );
 
-            label.setOpaque(true);
+        label.setOpaque(true);
 
-            label.setBorder(
-                    new EmptyBorder(
-                            10, 15, 10, 15));
+        label.setBorder(
+                new EmptyBorder(
+                        10,
+                        15,
+                        10,
+                        15
+                )
+        );
 
-            if (user) {
+        if (user) {
 
-                label.setBackground(
-                        new Color(0, 80, 120));
+            label.setBackground(
+                    new Color(0, 80, 120)
+            );
 
-                label.setForeground(
-                        Color.WHITE);
+            label.setForeground(
+                    Color.WHITE
+            );
 
-                wrapper.add(
-                        label,
-                        BorderLayout.EAST);
+            wrapper.add(
+                    label,
+                    BorderLayout.EAST
+            );
 
-            } else {
+        } else {
 
-                label.setBackground(
-                        new Color(10, 25, 38));
+            label.setBackground(
+                    new Color(10, 25, 38)
+            );
 
-                label.setForeground(
-                        new Color(180, 235, 255));
+            label.setForeground(
+                    new Color(180, 235, 255)
+            );
 
-                wrapper.add(
-                        label,
-                        BorderLayout.WEST);
-            }
+            wrapper.add(
+                    label,
+                    BorderLayout.WEST
+            );
+        }
 
-            wrapper.setBorder(
-                    new EmptyBorder(
-                            5, 0, 5, 0));
+        wrapper.setBorder(
+                new EmptyBorder(
+                        5,
+                        0,
+                        5,
+                        0
+                )
+        );
 
-            chatPanel.add(wrapper);
+        chatPanel.add(wrapper);
 
-            chatPanel.revalidate();
-            chatPanel.repaint();
+        chatPanel.revalidate();
+        chatPanel.repaint();
 
-            JScrollBar bar =
-                    scrollPane
-                            .getVerticalScrollBar();
+        JScrollBar bar =
+                scrollPane
+                        .getVerticalScrollBar();
 
-            bar.setValue(
-                    bar.getMaximum());
-        });
-    }
+        bar.setValue(
+                bar.getMaximum()
+        );
+    });
+}
 
-    // =====================================================
-    // CLOCK
-    // =====================================================
+// =====================================================
+// CLOCK
+// =====================================================
 
-    private void updateClock() {
+private void updateClock() {
 
-        clockLabel.setText(
-                new java.text.SimpleDateFormat(
-                        "HH:mm:ss")
-                        .format(
-                                new java.util.Date()));
-    }
+    clockLabel.setText(
+            new java.text.SimpleDateFormat(
+                    "HH:mm:ss"
+            ).format(
+                    new java.util.Date()
+            )
+    );
+}
+
 }
