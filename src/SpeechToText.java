@@ -3,128 +3,209 @@ import java.nio.file.*;
 
 public class SpeechToText {
 
-    private static Process recognizerProcess;
-    private static BufferedWriter recognizerInput;
-    private static BufferedReader recognizerOutput;
+private static Process recognizerProcess;
+private static BufferedWriter recognizerInput;
+private static BufferedReader recognizerOutput;
 
-    private static void startRecognizer() throws Exception {
+private static void startRecognizer() throws Exception {
 
-        if (recognizerProcess != null && recognizerProcess.isAlive()) {
+    if (recognizerProcess != null &&
+            recognizerProcess.isAlive()) {
+        return;
+    }
+
+    Path script = Paths.get(
+            "src",
+            "SpeechRecognizer.ps"
+    )
+    .toAbsolutePath()
+    .normalize();
+
+    if (!Files.exists(script)) {
+
+        throw new FileNotFoundException(
+                "SpeechRecognizer.ps not found: "
+                        + script
+        );
+    }
+
+    /*
+     * IMPORTANT:
+     *
+     * The script is named .ps rather than .ps1.
+     *
+     * PowerShell -File is intended for .ps1 scripts,
+     * so we execute the script through -Command instead.
+     */
+
+    String command =
+            "& '" +
+            script.toString()
+                    .replace("'", "''") +
+            "'";
+
+    ProcessBuilder pb =
+            new ProcessBuilder(
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-Command",
+                    command
+            );
+
+    pb.redirectErrorStream(true);
+
+    recognizerProcess = pb.start();
+
+    recognizerInput =
+            new BufferedWriter(
+                    new OutputStreamWriter(
+                            recognizerProcess
+                                    .getOutputStream()
+                    )
+            );
+
+    recognizerOutput =
+            new BufferedReader(
+                    new InputStreamReader(
+                            recognizerProcess
+                                    .getInputStream()
+                    )
+            );
+
+    String line;
+
+    while ((line =
+            recognizerOutput.readLine()) != null) {
+
+        if (line.equals("__READY__")) {
+
+            System.out.println(
+                    "NOURI: Speech recognition ready."
+            );
+
             return;
         }
 
-        Path script = Paths.get("src", "SpeechRecognizer.ps")
-                .toAbsolutePath()
-                .normalize();
+        if (line.startsWith("__ERROR__")) {
 
-        if (!Files.exists(script)) {
-            throw new FileNotFoundException(
-                    "SpeechRecognizer.ps1 not found: " + script
+            throw new IOException(
+                    "Speech recognizer error: "
+                            + line.substring(9)
             );
         }
 
-        ProcessBuilder pb = new ProcessBuilder(
-                "powershell.exe",
-                "-NoProfile",
-                "-ExecutionPolicy", "Bypass",
-                "-File", script.toString()
-        );
-
-        pb.redirectErrorStream(true);
-
-        recognizerProcess = pb.start();
-
-        recognizerInput = new BufferedWriter(
-                new OutputStreamWriter(
-                        recognizerProcess.getOutputStream()
-                )
-        );
-
-        recognizerOutput = new BufferedReader(
-                new InputStreamReader(
-                        recognizerProcess.getInputStream()
-                )
-        );
-
-        String line;
-
-        while ((line = recognizerOutput.readLine()) != null) {
-
-            if (line.equals("__READY__")) {
-                System.out.println("NOURI: Speech recognition ready.");
-                return;
-            }
-
-            if (line.startsWith("__ERROR__")) {
-                throw new IOException(
-                        "Speech recognizer error: " +
-                        line.substring(9)
-                );
-            }
-        }
-
-        throw new IOException(
-                "Windows speech recognizer stopped before becoming ready."
+        System.out.println(
+                "NOURI STT: " + line
         );
     }
 
-    public static synchronized String transcribe(Path audioFile)
-            throws Exception {
+    int exitCode = -1;
 
-        startRecognizer();
+    try {
+        exitCode =
+                recognizerProcess.exitValue();
+    } catch (IllegalThreadStateException ignored) {
+    }
 
-        recognizerInput.write(audioFile.toAbsolutePath().toString());
-        recognizerInput.newLine();
-        recognizerInput.flush();
+    throw new IOException(
+            "Windows speech recognizer stopped " +
+            "before becoming ready. Exit code: " +
+            exitCode
+    );
+}
 
-        String line;
+public static synchronized String transcribe(
+        Path audioFile
+) throws Exception {
 
-        while ((line = recognizerOutput.readLine()) != null) {
+    startRecognizer();
 
-            if (line.startsWith("__RESULT__")) {
+    if (!Files.exists(audioFile)) {
 
-                String result = line.substring(10);
-
-                int separator = result.lastIndexOf('|');
-
-                if (separator >= 0) {
-                    result = result.substring(0, separator);
-                }
-
-                return result.trim();
-            }
-
-            if (line.startsWith("__ERROR__")) {
-                throw new IOException(
-                        "Speech recognition error: " +
-                        line.substring(9)
-                );
-            }
-        }
-
-        throw new IOException(
-                "Speech recognizer stopped unexpectedly."
+        throw new FileNotFoundException(
+                "Audio file not found: "
+                        + audioFile
         );
     }
 
-    public static synchronized void shutdown() {
+    recognizerInput.write(
+            audioFile
+                    .toAbsolutePath()
+                    .normalize()
+                    .toString()
+    );
 
-        try {
-            if (recognizerInput != null) {
-                recognizerInput.close();
+    recognizerInput.newLine();
+    recognizerInput.flush();
+
+    String line;
+
+    while ((line =
+            recognizerOutput.readLine()) != null) {
+
+        if (line.startsWith("__RESULT__")) {
+
+            String result =
+                    line.substring(10);
+
+            int separator =
+                    result.lastIndexOf('|');
+
+            if (separator >= 0) {
+
+                result =
+                        result.substring(
+                                0,
+                                separator
+                        );
             }
-        } catch (Exception ignored) {
+
+            return result.trim();
         }
 
-        try {
-            if (recognizerProcess != null) {
-                recognizerProcess.destroy();
-            }
-        } catch (Exception ignored) {
+        if (line.startsWith("__ERROR__")) {
+
+            throw new IOException(
+                    "Speech recognition error: "
+                            + line.substring(9)
+            );
         }
 
-        recognizerProcess = null;
-        recognizerInput = null;
-        recognizerOutput = null;
+        System.out.println(
+                "NOURI STT: " + line
+        );
     }
+
+    throw new IOException(
+            "Speech recognizer stopped unexpectedly."
+    );
+}
+
+public static synchronized void shutdown() {
+
+    try {
+
+        if (recognizerInput != null) {
+            recognizerInput.close();
+        }
+
+    } catch (Exception ignored) {
+    }
+
+    try {
+
+        if (recognizerProcess != null) {
+            recognizerProcess.destroy();
+        }
+
+    } catch (Exception ignored) {
+    }
+
+    recognizerProcess = null;
+    recognizerInput = null;
+    recognizerOutput = null;
+}
+
 }
