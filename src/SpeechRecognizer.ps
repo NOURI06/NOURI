@@ -12,10 +12,10 @@ try {
 
     $recognizer = New-Object System.Speech.Recognition.SpeechRecognitionEngine($info)
 
-    $recognizer.InitialSilenceTimeout = 1
-    $recognizer.BabbleTimeout = 1
-    $recognizer.EndSilenceTimeout = 0.6
-    $recognizer.EndSilenceTimeoutAmbiguous = 0.8
+    $recognizer.InitialSilenceTimeout = [TimeSpan]::FromSeconds(1)
+    $recognizer.BabbleTimeout = [TimeSpan]::FromSeconds(1)
+    $recognizer.EndSilenceTimeout = [TimeSpan]::FromSeconds(0.6)
+    $recognizer.EndSilenceTimeoutAmbiguous = [TimeSpan]::FromSeconds(0.8)
 
     # -----------------------------
     # COMMAND GRAMMAR
