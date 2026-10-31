@@ -1,3 +1,4 @@
+
 name: Build NOURI Beta 2.0
 
 on: [workflow_dispatch, push]
@@ -22,30 +23,6 @@ jobs:
           unzip -o NOURI_BETA_2_0_SOURCE.zip -d .
           test -f settings.gradle
           test -f app/build.gradle
-
-      - name: Fix Java text arguments
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path("app/src/main/java/com/nouri/assistant/MainActivity.java")
-          s = p.read_text()
-
-          s = s.replace(
-              'text("N.O.U.R.I", 19, GOLD, true)',
-              'text("N.O.U.R.I", 19, true, GOLD)'
-          )
-          s = s.replace(
-              'text("NOURI", 10, GOLD, true)',
-              'text("NOURI", 10, true, GOLD)'
-          )
-          s = s.replace(
-              'text("VOICE ON", 11, GOLD, true)',
-              'text("VOICE ON", 11, true, GOLD)'
-          )
-
-          p.write_text(s)
-          PY
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
