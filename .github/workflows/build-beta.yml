@@ -16,9 +16,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-
-            - name: Extract NOURI Beta 2.0
-        run: |
+          - name: Extract NOURI Beta 2.0
+          
           unzip -o NOURI_BETA_2_0_SOURCE.zip -d .
           test -f settings.gradle
           test -f app/build.gradle
